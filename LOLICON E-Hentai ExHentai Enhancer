@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.04.24
+// @version             2026.05.12
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Thumbnail Hover Zoom
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、缩略图悬浮放大
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、縮略圖懸浮放大
@@ -491,7 +491,7 @@
                 user-select: none;
             }
             .lolicon-settings-toggle-bar {
-                padding: 0px 12px;
+                padding: 0 12px;
             }
             .lolicon-settings-toggle-btn {
                 width: 100%;
@@ -714,10 +714,11 @@
                 user-select: none;
             }
             #lolicon-tag-manage-textarea {
+                width: 420px; height: 480px;
                 min-width: 300px; min-height: 300px;
-                width: 420px; height: 420px;
-                padding: 6px 12px;
+                padding: 0 12px;
                 font-family: NSimSun, monospace;
+                font-size: 16px;
                 line-height: 1.2;
                 white-space: pre;
                 user-select: text;
@@ -3413,6 +3414,7 @@
         tags: loadTags(), // 标签数据树 [{ group , children: [{ type , name, tag }, ...] }]
         activeGroup: null, // 当前激活的自定义分组名（null 表示仅显示默认组）
         permaBound: false, // 全局事件挂载锁（确保代理事件仅绑定一次）
+        ignoreTextareaInput: false, // 是否忽略 textarea 的 input 事件（程序写入时使用）
         container: null, // 面板容器 DOM
         input: null, // 搜索输入框 DOM
         groupDefault: null, // 默认分组 DOM
@@ -3622,12 +3624,15 @@
         // 右键处理
         panel.addEventListener('contextmenu', (e) => {
             const target = e.target;
-            if (target.dataset.type === 'group') {
+            if (target.type === 'button') {
                 e.preventDefault();
-                showManagePanel('editGroup', target.dataset.group);
-            } else if (target.type === 'button') {
-                e.preventDefault();
-                showManagePanel('editItem', target.dataset.index);
+                if (target.dataset.type === 'group') {
+                    showManagePanel('editGroup', target.dataset.group);
+                } else if (target.dataset.type === 'add') {
+                    showManagePanel('add', target.dataset.group || '');
+                } else {
+                    showManagePanel('editItem', target.dataset.index);
+                }
             }
         });
 
@@ -3899,9 +3904,76 @@
         if (inputDevice === 'mouse') searchBox.input.focus();
     }
 
-    /** 显示用于编辑所有搜索标签的管理面板（模态框） */
+    /** 将 tags 数据重新转回 textarea 文本 */
+    function stringifyTags(tags) {
+        // 计算最长的按钮名视觉宽度，用于对齐 '@' 符号
+        let maxW = 0;
+        tags.forEach((g) => {
+            g.children.forEach((t) => {
+                if (t.name) maxW = Math.max(maxW, visualWidth(t.name));
+            });
+        });
+        // 将 tags 对象格式化为易于编辑的文本
+        const lines = [];
+
+        tags.forEach((g) => {
+            // 处理分组标题
+            if (g.group !== '') {
+                lines.push(''); // 空行分隔
+                lines.push(`# ${g.group}`); // # 声明分组
+            }
+
+            // 处理子项
+            g.children.forEach((t) => {
+                if (t.type === 'break') {
+                    lines.push('_'); // _ 声明折行
+                } else {
+                    const padding = ' '.repeat(Math.max(0, maxW - visualWidth(t.name)));
+                    lines.push(`${t.name}${padding}  @  ${t.tag}`);
+                }
+            });
+        });
+
+        return lines.join('\n') + '\n';
+    }
+
+    /** 同步管理面板 textarea */
+    function syncManageTextarea() {
+        const ta = $i('lolicon-tag-manage-textarea');
+        if (!ta) return;
+
+        searchBox.ignoreTextareaInput = true;
+
+        const scroll = ta.scrollTop;
+        ta.value = stringifyTags(searchBox.tags);
+        ta.scrollTop = scroll;
+
+        searchBox.ignoreTextareaInput = false;
+    }
+
+    /** 聚焦、选中并滚动到指定行 */
+    function focusTextareaLine(ta, lines, lineIdx) {
+        ta.focus();
+        if (lineIdx >= 0) {
+            const lineContent = lines[lineIdx] || '';
+            const lineHeight = 16 * 1.2; // font-size: 16px; line-height: 1.2;
+            const startPos = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
+            ta.setSelectionRange(startPos, startPos + lineContent.length);
+            ta.scrollTop = Math.max(0, (lineIdx * lineHeight) - (ta.clientHeight / 2) + (lineHeight / 2));
+        }
+    }
+
+    /** 显示用于编辑所有搜索标签的管理面板 */
     function showManagePanel(mode, value) {
-        $i('lolicon-tag-manage-panel')?.remove();
+        if (!$i('lolicon-tag-manage-panel')) {
+            createManagePanel();
+        }
+        updateManagePanel(mode, value);
+    }
+
+    /** 创建搜索标签管理面板 */
+    function createManagePanel() {
+        const tagsSnapshot = structuredClone(searchBox.tags);
 
         const panel = $el('div');
         panel.id = 'lolicon-tag-manage-panel';
@@ -3911,12 +3983,96 @@
         const ta = $el('textarea');
         ta.id = 'lolicon-tag-manage-textarea';
 
+        let composing = false;
+        let rafId = 0;
+
+        const realtimeUpdate = () => {
+            if (searchBox.ignoreTextareaInput) return;
+
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                try {
+                    const oldActiveGroup = searchBox.activeGroup;
+                    saveTags(true);
+                    searchBox.activeGroup = oldActiveGroup;
+                } catch (error) {
+                    if (cfg.logLevel <= 2) console.error('LOLICON 标签管理面板 realtimeUpdate 发生错误：', error.message);
+                }
+            });
+        };
+
+        // IME 兼容 避免中文输入法中途触发解析
+
+        ta.addEventListener('compositionstart', () => {
+            composing = true;
+        });
+
+        ta.addEventListener('compositionend', () => {
+            composing = false;
+            realtimeUpdate();
+        });
+
+        ta.addEventListener('input', () => {
+            if (composing) return;
+            realtimeUpdate();
+        });
+
+        // 创建包含“保存”和“取消”按钮的工具栏
+        const bar = $el('div');
+        bar.id = 'lolicon-tag-manage-footer';
+
+        const btnSave = $el('input');
+        btnSave.type = 'button';
+        btnSave.value = translate('save');
+        btnSave.id = 'lolicon-tag-manage-save';
+        btnSave.addEventListener('click', () => saveTags());
+
+        const btnCancel = $el('input');
+        btnCancel.type = 'button';
+        btnCancel.value = translate('cancel');
+        btnCancel.id = 'lolicon-tag-manage-cancel';
+        btnCancel.addEventListener('click', () => {
+            finalizeSave(tagsSnapshot, false);
+            panel.remove();
+        });
+
+        const hint = $el('div');
+        hint.id = 'lolicon-tag-manage-hint';
+        hint.textContent = translate('inputFormatHint');
+        const btnBox = $el('div');
+        btnBox.id = 'lolicon-tag-manage-buttons';
+        btnBox.append(btnSave, btnCancel);
+        bar.append(hint, btnBox);
+
+        panel.append(header, ta, bar);
+
+        // 防止触发全局快捷键 并支持 Esc 关闭
+        panel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                finalizeSave(tagsSnapshot, false);
+                panel.remove();
+                return;
+            }
+            e.stopPropagation();
+        }, true);
+
+        document.body.append(panel);
+        enablePanelTop(panel);
+        enablePanelDrag(panel);
+    }
+
+    /** 更新搜索标签管理面板 */
+    function updateManagePanel(mode, value) {
+        const ta = $i('lolicon-tag-manage-textarea');
+
         let lineIdx = -1; // 用于记录目标标签在编辑器中的行号
         // 计算最长的按钮名视觉宽度，用于对齐 '@' 符号
         let maxW = 0;
-        searchBox.tags.forEach((g) => g.children.forEach((t) => {
-            if (t.name) maxW = Math.max(maxW, visualWidth(t.name));
-        }));
+        searchBox.tags.forEach((g) => {
+            g.children.forEach((t) => {
+                if (t.name) maxW = Math.max(maxW, visualWidth(t.name));
+            });
+        });
         // 将 tags 对象格式化为易于编辑的文本
         const lines = [];
 
@@ -3952,55 +4108,50 @@
 
         ta.value = lines.join('\n') + '\n';
 
-        // 创建包含“保存”和“取消”按钮的工具栏
-        const bar = $el('div');
-        bar.id = 'lolicon-tag-manage-footer';
+        focusTextareaLine(ta, lines, lineIdx);
+    }
 
-        const btnSave = $el('input');
-        btnSave.type = 'button';
-        btnSave.value = translate('save');
-        btnSave.id = 'lolicon-tag-manage-save';
-        btnSave.addEventListener('click', saveTags);
+    /** 根据当前 DOM 排序，实时预览 textarea 不修改真实 tags */
+    function syncDragPreviewToTextarea() {
+        const ta = $i('lolicon-tag-manage-textarea');
+        if (!ta) return;
 
-        const btnCancel = $el('input');
-        btnCancel.type = 'button';
-        btnCancel.value = translate('cancel');
-        btnCancel.id = 'lolicon-tag-manage-cancel';
-        btnCancel.addEventListener('click', () => panel.remove()); // 取消按钮直接移除面板
+        const tempTags = structuredClone(searchBox.tags);
 
-        const hint = $el('div');
-        hint.id = 'lolicon-tag-manage-hint';
-        hint.textContent = translate('inputFormatHint');
-        const btnBox = $el('div');
-        btnBox.id = 'lolicon-tag-manage-buttons';
-        btnBox.append(btnSave, btnCancel);
-        bar.append(hint, btnBox);
+        const applyContainer = (container, groupName) => {
+            if (!container) return;
 
-        panel.append(header, ta, bar);
-        document.body.append(panel);
-        enablePanelTop(panel);
-        enablePanelDrag(panel);
+            const groupObj = tempTags.find((g) => g.group === groupName);
+            if (!groupObj) return;
 
-        // 防止触发全局快捷键 并支持 Esc 关闭
-        panel.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                panel.remove();
-                return;
-            }
-            e.stopPropagation();
-        }, true);
+            const newChildren = [];
 
-        // 定位到对应行并选中
-        ta.focus();
-        if (lineIdx !== -1) {
-            const startPos = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
-            ta.setSelectionRange(startPos, mode === 'add' ? startPos : startPos + lines[lineIdx].length);
-            ta.scrollTop = Math.max(0, lineIdx * 18 - (ta.clientHeight / 2));
+            container.querySelectorAll('input[data-index]').forEach((node) => {
+                const [gIdx, cIdx] = node.dataset.index.split('-').map(Number);
+                const item = searchBox.tags[gIdx]?.children[cIdx];
+                if (item) newChildren.push(structuredClone(item));
+            });
+
+            groupObj.children = newChildren;
+        };
+
+        applyContainer(searchBox.groupDefault, '');
+
+        if (searchBox.activeGroup) {
+            applyContainer(searchBox.groupActive, searchBox.activeGroup);
         }
+
+        searchBox.ignoreTextareaInput = true;
+
+        const scroll = ta.scrollTop;
+        ta.value = stringifyTags(tempTags);
+        ta.scrollTop = scroll;
+
+        searchBox.ignoreTextareaInput = false;
     }
 
     /** 解析管理面板文本框中的内容，并保存新的搜索标签配置 */
-    function saveTags() {
+    function saveTags(isRealtime = false) {
         const ta = $i('lolicon-tag-manage-textarea');
         if (!ta) return;
 
@@ -4013,12 +4164,14 @@
         let currentGroupObj = { group: '', children: [] };
         newTags.push(currentGroupObj);
 
-        // 定位到错误行并选中
-        const focusErrorLine = (lineIdx) => {
-            ta.focus();
-            const startPos = lines.slice(0, lineIdx).join('\n').length + (lineIdx > 0 ? 1 : 0);
-            ta.setSelectionRange(startPos, startPos + lines[lineIdx].length);
-            ta.scrollTop = Math.max(0, lineIdx * 18 - (ta.clientHeight / 2));
+        // 错误提示
+        const reportError = (msgKey, arg, lineIdx) => {
+            if (isRealtime) {
+                ta.style.borderColor = '#FF4444';
+            } else {
+                alert(translate(msgKey) + arg);
+                focusTextareaLine(ta, lines, lineIdx);
+            }
         };
 
         for (let i = 0; i < lines.length; i++) {
@@ -4031,15 +4184,13 @@
 
                 // 校验 分组名 为空
                 if (gName === '') {
-                    alert(translate('groupNameEmpty'));
-                    focusErrorLine(i);
+                    reportError('groupNameEmpty', '', i);
                     return;
                 }
 
                 // 校验 分组名 重复
                 if (existingGroupNames.has(gName)) {
-                    alert(translate('groupNameDuplicate') + gName);
-                    focusErrorLine(i);
+                    reportError('groupNameDuplicate', gName, i);
                     return;
                 }
 
@@ -4062,29 +4213,25 @@
 
             // 校验 @ 数量
             if (parts.length > 2) {
-                alert(translate('tagMultipleAt') + line);
-                focusErrorLine(i);
+                reportError('tagMultipleAt', line, i);
                 return;
             }
 
             // 校验 name 为空
             if (!name) {
-                alert(translate('tagNameMissing') + line);
-                focusErrorLine(i);
+                reportError('tagNameMissing', line, i);
                 return;
             }
 
             // 校验 引号 成对
             if (((name.split('"').length - 1) % 2) || ((tag.split('"').length - 1) % 2)) {
-                alert(translate('tagUnbalancedQuotes') + line);
-                focusErrorLine(i);
+                reportError('tagUnbalancedQuotes', line, i);
                 return;
             }
 
             // 校验 name 重复
             if (allTagNames.has(name)) {
-                alert(translate('tagNameDuplicate') + name);
-                focusErrorLine(i);
+                reportError('tagNameDuplicate', name, i);
                 return;
             }
             allTagNames.add(name); // 记录名称
@@ -4097,8 +4244,15 @@
             searchBox.activeGroup = null;
         }
 
-        finalizeSave(newTags);
-        $i('lolicon-tag-manage-panel')?.remove();
+        if (isRealtime) {
+            ta.style.borderColor = '';
+            // 只更新内存和 UI，不持久化，不关闭面板
+            finalizeSave(newTags, false);
+        } else {
+            // 真正保存：持久化 + 关闭面板
+            finalizeSave(newTags, true);
+            $i('lolicon-tag-manage-panel')?.remove();
+        }
     }
 
     /** 启用标签按钮拖拽排序 */
@@ -4108,31 +4262,38 @@
         let originNextSibling = null; // 记录拖拽开始时的后继节点，用于取消拖拽时还原
         let originParent = null; // 记录拖拽开始时的父节点，用于取消拖拽时还原
         let lastValidInside = false; // 标记当前鼠标是否处于有效的放置区域内
+        let cachedContainers = null; // 缓存容器的 BoundingRect
 
         // 获取事件目标对应的按钮元素
         const getTargetBtn = (e) => e.target.closest('input[type="button"]');
 
+        // 初始化/更新容器缓存 (在 dragstart 中调用)
+        const updateContainerCache = () => {
+            const getRect = (el) => el ? el.getBoundingClientRect() : null;
+            cachedContainers = {
+                nav: getRect(searchBox.groupNav),
+                default: getRect(searchBox.groupDefault),
+                active: getRect(searchBox.groupActive)
+            };
+        };
+
         // 边界检测：判断当前鼠标位置是否在合法的容器内
         const checkIsInside = (e) => {
-            if (!dragging) return false;
+            if (!dragging || !cachedContainers) return false;
 
-            const isInsideRect = (rect) => (
+            const isInsideRect = (rect) => rect && (
                 e.clientX >= rect.left - 12 && e.clientX <= rect.right + 12 &&
                 e.clientY >= rect.top - 12 && e.clientY <= rect.bottom + 12
             );
 
-            const checkGroup = (container) => {
-                return container && isInsideRect(container.getBoundingClientRect());
-            };
-
             // group：只允许 nav
             if (dragging.dataset.type === 'group') {
-                return checkGroup(searchBox.groupNav);
+                return isInsideRect(cachedContainers.nav);
             }
 
             // tag / break：允许 default + nav + active
             if (dragging.dataset.type === 'tag' || dragging.dataset.type === 'break') {
-                return checkGroup(searchBox.groupDefault) || checkGroup(searchBox.groupNav) || checkGroup(searchBox.groupActive);
+                return isInsideRect(cachedContainers.default) || isInsideRect(cachedContainers.nav) || isInsideRect(cachedContainers.active);
             }
 
             return false;
@@ -4153,6 +4314,15 @@
             }
         };
 
+        // 重置拖拽位置逻辑抽象
+        const revertToOrigin = () => {
+            if (dragging.parentNode !== originParent || dragging.nextSibling !== originNextSibling) {
+                animateMove(panel, () => {
+                    originParent.insertBefore(dragging, originNextSibling);
+                });
+            }
+        };
+
         // FLIP 动画核心实现
         const animateMove = (parent, executeMove) => {
             // 获取所有按钮，确保跨行动画也能被捕获
@@ -4168,29 +4338,45 @@
             executeMove();
 
             requestAnimationFrame(() => {
-                const needsFlip = [];
+                const flipElements = [];
+                const fadeElements = [];
 
                 children.forEach(child => {
-                    if (child.classList.contains('lolicon-tag-dragging')) return;
+                    if (child === dragging) return;
 
                     const firstPos = firstPositions.get(child);
+                    if (!firstPos) return;
                     const lastPos = child.getBoundingClientRect();
                     const dx = firstPos.left - lastPos.left;
                     const dy = firstPos.top - lastPos.top;
 
                     if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
                         child.style.transition = 'none';
-                        child.style.transform = `translate(${dx}px, ${dy}px)`;
-                        needsFlip.push(child); // 记录需要移动的元素
+
+                        if (Math.abs(dy) < 2) {
+                            child.style.transform = `translate(${dx}px, ${dy}px)`;
+                            flipElements.push(child);
+                        } else {
+                            child.style.transform = '';
+                            child.style.opacity = '0';
+                            fadeElements.push(child);
+                        }
                     }
                 });
 
-                if (needsFlip.length > 0) parent.offsetWidth; // 触发重绘
+                if (flipElements.length > 0 || fadeElements.length > 0) {
+                    parent.offsetWidth;
 
-                needsFlip.forEach(child => {
-                    child.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)';
-                    child.style.transform = '';
-                });
+                    flipElements.forEach(child => {
+                        child.style.transition = 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)';
+                        child.style.transform = '';
+                    });
+
+                    fadeElements.forEach(child => {
+                        child.style.transition = 'opacity 0.2s ease-out';
+                        child.style.opacity = '1';
+                    });
+                }
             });
         };
 
@@ -4210,6 +4396,9 @@
             dragging.classList.add('lolicon-tag-dragging');
             e.dataTransfer.effectAllowed = 'move';
 
+            // 建立边界缓存
+            updateContainerCache();
+
             // 异步降低透明度，防止拖拽时的“半透明镜像”过淡
             setTimeout(() => {
                 if (dragging) dragging.style.opacity = '0.4';
@@ -4225,11 +4414,7 @@
             if (!lastValidInside) {
                 e.dataTransfer.dropEffect = 'none';
                 resetDropState();
-                if (dragging.parentNode !== originParent || dragging.nextSibling !== originNextSibling) {
-                    animateMove(panel, () => {
-                        originParent.insertBefore(dragging, originNextSibling);
-                    });
-                }
+                revertToOrigin();
                 return;
             }
 
@@ -4261,13 +4446,22 @@
             // 组按钮或标签按钮排序逻辑
             if (isMatchingType) {
                 const btnRect = overBtn.getBoundingClientRect();
-                const isBefore = (overBtn.dataset.type === 'add' || e.clientX < btnRect.left + btnRect.width / 2);
+                const dragRect = dragging.getBoundingClientRect();
+                const nextBtn = overBtn.nextElementSibling;
+
+                const isDifferentRow = Math.abs(dragRect.top - btnRect.top) > 2;
+                const isLastInRow = !nextBtn || Math.abs(btnRect.top - nextBtn.getBoundingClientRect().top) > 2;
+                const isBefore = ((isDifferentRow && isLastInRow) || overBtn.dataset.type === 'add' || e.clientX < btnRect.left + btnRect.width / 2);
+
                 const currentPos = isBefore ? dragging.nextSibling : dragging;
                 const targetPos = isBefore ? overBtn : overBtn.nextSibling;
 
                 if (currentPos !== targetPos) {
                     animateMove(panel, () => {
                         overBtn.parentNode.insertBefore(dragging, targetPos);
+                    });
+                    requestAnimationFrame(() => {
+                        syncDragPreviewToTextarea();
                     });
                 }
             }
@@ -4280,11 +4474,7 @@
                 lastValidInside = false;
                 e.dataTransfer.dropEffect = 'none';
                 resetDropState();
-                if (dragging.parentNode !== originParent || dragging.nextSibling !== originNextSibling) {
-                    animateMove(panel, () => {
-                        originParent.insertBefore(dragging, originNextSibling);
-                    });
-                }
+                revertToOrigin();
             }
         });
 
@@ -4297,6 +4487,7 @@
 
             dragging.classList.remove('lolicon-tag-dragging');
             dragging.style.opacity = '';
+            const persist = !$i('lolicon-tag-manage-panel');
 
             if (!lastValidInside) {
                 // 在区域外松开，执行重绘还原
@@ -4306,28 +4497,36 @@
                 const targetGroupName = lastDropTarget.dataset.group;
                 const [gIdx, cIdx] = dragging.dataset.index.split('-').map(Number);
 
-                const item = searchBox.tags[gIdx].children.splice(cIdx, 1)[0];
+                const group = searchBox.tags[gIdx];
+                const item = group?.children[cIdx];
                 const targetGroup = searchBox.tags.find(g => g.group === targetGroupName);
 
                 if (targetGroup && item) {
+                    group.children.splice(cIdx, 1);
                     targetGroup.children.push(item);
-                    finalizeSave(searchBox.tags); // 持久化并重绘
+                    finalizeSave(searchBox.tags, persist); // 管理面板开启时不持久化
+                } else {
+                    buildPanel();
                 }
             } else {
                 // 组内排序，基于 DOM 现状保存新顺序
                 const isGroup = dragging.dataset.type === 'group';
-                isGroup ? saveGroupOrderFromNav(dragging.parentNode) : saveOrderFromPanel();
+                isGroup ? saveGroupOrderFromNav(dragging.parentNode, persist) : saveOrderFromPanel(persist);
             }
 
+            // 清除状态与缓存
             dragging = null;
             originNextSibling = null;
             originParent = null;
+            cachedContainers = null;
             resetDropState();
+
+            syncManageTextarea();
         });
     }
 
     /** 组间排序（导航栏拖拽） */
-    function saveGroupOrderFromNav(nav) {
+    function saveGroupOrderFromNav(nav, persist = true) {
         const newGroupOrder = Array.from(nav.querySelectorAll('input[data-type="group"]'))
             .map((btn) => btn.dataset.group);
 
@@ -4342,11 +4541,11 @@
             if (gObj) newTags.push(gObj);
         });
 
-        finalizeSave(newTags);
+        finalizeSave(newTags, persist);
     }
 
     /** 组内及跨组排序（面板内按钮拖拽） */
-    function saveOrderFromPanel() {
+    function saveOrderFromPanel(persist = true) {
         const activeGroup = searchBox.activeGroup || '';
         // 创建新结构 暂时只保留组名
         const newTags = searchBox.tags.map((g) => ({ group: g.group, children: [] }));
@@ -4389,13 +4588,13 @@
             }
         });
 
-        finalizeSave(newTags);
+        finalizeSave(newTags, persist);
     }
 
     /** 统一的保存与刷新逻辑 */
-    function finalizeSave(tags) {
-        searchBox.tags = tags;
-        GM_setValue(STORAGE_KEY, tags);
+    function finalizeSave(tags, persist = true) {
+        searchBox.tags = structuredClone(tags);
+        if (persist) GM_setValue(STORAGE_KEY, searchBox.tags);
 
         buildPanel(); // 刷新 UI
     }
