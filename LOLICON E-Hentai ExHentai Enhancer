@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.05.24
+// @version             2026.06.01
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Thumbnail Hover Zoom
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、缩略图悬浮放大
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、縮略圖懸浮放大
@@ -94,6 +94,8 @@
         };
     }
 
+    /** 应用更改-防抖 */
+    const debouncedApplyChanges = debounce(applyChanges, 60);
     /** 更新列表页宽-节流 */
     const throttledAdjustColumnsL = throttle(function () {
         calculateDimensions();
@@ -313,6 +315,7 @@
         min_zoomFactorG: { pages: ['G'], def: 0.5, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最小缩放
         max_zoomFactorG: { pages: ['G'], def: 2, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最大缩放
         spacing: { pages: ['G'], def: 20, step: 1, min: 0, max: 100 }, // 缩略图间距
+        rowSpacing: { pages: ['G'], def: 15, step: 1, min: 0, max: 100 }, // 缩略图行间距
         pageMarginG: { pages: ['G'], def: 10, step: 1, min: 0, max: 1000 }, // 画廊页页面外边距
         fullWidthModeG: { pages: ['G'], def: false }, // 画廊页全宽布局
 
@@ -380,6 +383,15 @@
 
         LOLICON: /* css */ `
             [data-lolicon-index] { white-space: nowrap; }
+            #gmid.lolicon-gmid-grid { display: grid; grid: "gd3 spa spa" auto "gd3 gd4 gd5" auto / auto 1fr auto; height: auto; }
+            #gmid.lolicon-gmid-grid #gd3 { grid-area: gd3; }
+            #gmid.lolicon-gmid-grid #spa { grid-area: spa; width: auto; }
+            #gmid.lolicon-gmid-grid #gd4 { grid-area: gd4; width: auto; min-width: 0; }
+            #gmid.lolicon-gmid-grid #tagmenu_act,
+            #gmid.lolicon-gmid-grid #tagmenu_new { width: calc(100% - 30px) !important; }
+            #gmid.lolicon-gmid-grid #tagmenu_new > form { display: flex; }
+            #gmid.lolicon-gmid-grid #tagmenu_new > form #newtagfield { flex: auto; width: 0 !important; }
+            #gmid.lolicon-gmid-grid #gd5 { grid-area: gd5; }
         `,
 
         // 变量
@@ -822,6 +834,7 @@
                 margin-top: 6px !important;
             }
             .lolicon-fav-gdf-btn #fav .i { margin-left: 0 !important; }
+            #gd3:has(.lolicon-fav-gdf-btn) { padding-bottom: 42px; }
         `,
 
         // 无限滚动加载指示器样式
@@ -1078,6 +1091,14 @@
             'ja': 'サムネイル間隔',
             'ko': '썸네일 간격',
             'ru': 'Интервал миниатюр',
+        },
+        'rowSpacing': {
+            'en': 'Thumbnail Row Spacing',
+            'zh-CN': '缩略图行间距',
+            'zh-TW': '縮圖行間距',
+            'ja': 'サムネイル行間隔',
+            'ko': '썸네일 행 간격',
+            'ru': 'Межстрочный интервал миниатюр',
         },
         'pageMargin': {
             'en': 'Page Margin',
@@ -1939,6 +1960,7 @@
         layoutEnabledG: [
             ['layoutControlModeG'],
             ['spacing'],
+            ['rowSpacing'],
             ['pageMarginG'],
             ['fullWidthModeG'],
         ],
@@ -2658,7 +2680,7 @@
         } else {
             clientWidthL_itg = (pageInfo.listDisplayMode === 't')
                 ? Math.max(layout.idoMinWidth, layout.columnsT * layout.columnWidthTb)
-                : Math.max(layout.idoMinWidth, Math.min(720 + 670 + 14, clientWidthLO));
+                : Math.max(layout.idoMinWidth, Math.min(720 + 670 + 14, clientWidthLO)); // 1404 = 720 + 670 + ( idi-padding:5 + idi-border:2 ) * 2
         }
 
         // 应用样式
@@ -2672,9 +2694,9 @@
             $c('itg')[0].style.width = !cfg.layoutEnabledL ? '' : clientWidthL_itg + 'px';
         }
 
-        const totalRequiredWidthL = clientWidthL_ido + layout.marginAdjustmentL;
-        if (totalRequiredWidthL > viewportW + 0.1) {
-            document.body.style.minWidth = !cfg.layoutEnabledL ? '' : totalRequiredWidthL + 'px';
+        const totalRequiredWidthL = clientWidthL_ido + layout.marginAdjustmentL - 4; // 减去 body-padding:2
+        if (cfg.layoutEnabledL && totalRequiredWidthL > viewportW + 0.1) {
+            document.body.style.minWidth = totalRequiredWidthL + 'px';
         } else {
             document.body.style.minWidth = '';
         }
@@ -2683,14 +2705,14 @@
         const paddingValue = (viewportW - layout.marginAdjustmentL - layout.paddingAdjustmentL >= layout.idoMinWidth)
             ? cfg.pagePadding
             : (viewportW - layout.idoMinWidth - layout.marginAdjustmentL) / 2;
-        for (let i = 0; i < 2; i++) {
-            const el = searchnavEls[i];
-            if (!el) continue;
-            el.children[0].style.padding = !cfg.layoutEnabledL ? '' : '0 0 0 ' + paddingValue + 'px';
-            el.children[6].style.padding = !cfg.layoutEnabledL ? '' : '0 ' + paddingValue + 'px 0 0';
+        for (const el of searchnavEls) {
+            const first = el.firstElementChild;
+            const last = el.lastElementChild;
+            if (first) first.style.padding = !cfg.layoutEnabledL ? '' : '0 0 0 ' + paddingValue + 'px';
+            if (last) last.style.padding = !cfg.layoutEnabledL ? '' : '0 ' + paddingValue + 'px 0 0';
         }
 
-        const isLargerWidth = cfg.layoutEnabledL && (clientWidthL_ido >= 720 + 670 + 14 + layout.paddingAdjustmentL); //1460
+        const isLargerWidth = cfg.layoutEnabledL && (clientWidthL_itg >= 720 + 670 + 14); // 1404 = 720 + 670 + ( idi-padding:5 + idi-border:2 ) * 2
         adjustSearchBox(isLargerWidth);
 
         // 调整收藏页面
@@ -2701,17 +2723,17 @@
 
             const isNarrowMode = cfg.layoutEnabledL && clientWidthL_ido < (930 + layout.paddingAdjustmentL);
 
-            const noselWidth = Math.max(735, Math.min(825, clientWidthL_ido));
+            const noselWidth = Math.max(735, Math.min(825, clientWidthL_itg)); // 原 825
             if ($c('nosel')[1]) { $c('nosel')[1].style.width = (isNarrowMode ? noselWidth : 825) + 'px'; }
 
-            const fpWidth = Math.max(142, Math.min(160, (clientWidthL_ido - 16) / 5 - 1));
+            const fpWidth = Math.min(160, noselWidth / 5 - 5); // 原160 随容器缩放
             for (let i = 0; i < Math.min(10, fpElements.length); i++) {
                 fpElements[i].style.width = (isNarrowMode ? fpWidth : 160) + 'px';
             }
 
             if (searchContainer && isNarrowMode) {
                 searchContainer.style.width = noselWidth + 'px';
-                searchInput.setAttribute('size', Math.max(84, Math.min(90, 84 + (noselWidth - 735) / 15)));
+                searchInput.setAttribute('size', Math.min(90, 78 + (noselWidth - 735) / 7.5)); // 原90 预留右侧按钮空间后随容器缩放
                 searchInput.style.width = '';
             } else if (searchContainer) {
                 searchContainer.style.width = (isLargerWidth ? 720 + 670 : 825) + 'px';
@@ -2754,36 +2776,35 @@
             if ($c('gm')[1]) { $c('gm')[1].style.maxWidth = !cfg.layoutEnabledG ? '' : clientWidthG_gdt + 20 + 'px'; } // 设置最评论区大宽度 720 960 1200
             if ($i('gdo')) { $i('gdo').style.maxWidth = !cfg.layoutEnabledG ? '' : clientWidthG_gdt + 20 + 'px'; } // 设置缩略图设置栏最大宽度 720 960 1200
 
-            let clientWidthG_gdt_gd2 = clientWidthG_gdt - 255; // 设置标题栏宽度 710 925
-            let clientWidthG_gdt_gmid = clientWidthG_gdt - 250; // 设置标签栏宽度 710 930
-            let clientWidthG_gdt_gd4 = clientWidthG_gdt - 600; // 设置标签栏宽度 360 580
-            if ($i('gd1')) { $i('gd1').style.display = ''; }
-
-            let layoutWidth = (cfg.layoutSizeModeG === 0 && cfg.fullWidthModeG) ? viewportW : clientWidthG_gdt + 2 * cfg.pageMarginG + 34;
-            if (viewportW <= 1230 || (cfg.layoutEnabledG && layoutWidth <= 1230 - 190)) {
-                clientWidthG_gdt_gd2 = clientWidthG_gdt_gd2 + 255;
-                clientWidthG_gdt_gmid = clientWidthG_gdt_gmid + 255;
-                clientWidthG_gdt_gd4 = clientWidthG_gdt_gd4 + 255;
-                if ($i('gd1')) { $i('gd1').style.display = 'none'; }
+            // 是否隐藏封面 原逻辑:窗口小于1230px时 gm 从 1200 缩小至 960 并隐藏 gd1
+            const isCoverHidden = clientWidthG_gdt + 20 <= 960;
+            const coverOffset = isCoverHidden ? 255 : 0;
+            if (cfg.layoutEnabledG) {
+                if ($i('gd1')) { $i('gd1').style.setProperty('display', isCoverHidden ? 'none' : 'flex', 'important'); }
+            } else {
+                if ($i('gd1')) { $i('gd1').style.display = ''; }
             }
 
-            if ($i('gd2')) { $i('gd2').style.width = !cfg.layoutEnabledG ? '' : clientWidthG_gdt_gd2 + 'px'; }
-            if ($i('gmid')) { $i('gmid').style.width = !cfg.layoutEnabledG ? '' : clientWidthG_gdt_gmid + 'px'; }
-            if ($i('gd4')) { $i('gd4').style.width = !cfg.layoutEnabledG ? '' : clientWidthG_gdt_gd4 + 'px'; }
+            if ($i('gd2')) { $i('gd2').style.width = !cfg.layoutEnabledG ? '' : clientWidthG_gdt - 255 + coverOffset + 'px'; } // 设置标题栏宽度 710 925
+            if ($i('gmid')) {
+                $i('gmid').style.width = !cfg.layoutEnabledG ? '' : clientWidthG_gdt - 250 + coverOffset + 'px'; // 设置标签栏宽度 710 930
+                $i('gmid').classList.toggle('lolicon-gmid-grid', cfg.layoutEnabledG);
+            }
 
             gdt.style.maxWidth = !cfg.layoutEnabledG ? '' : clientWidthG_gdt + 'px'; // 设置最大宽度 700 940 1180
             gdt.style.gridTemplateColumns = !cfg.layoutEnabledG ? '' : 'repeat(' + layout.columnsG + ', minmax(0, 1fr))'; // 设置列数
-            gdt.style.gap = !cfg.layoutEnabledG ? '' : cfg.spacing + 'px';
+            gdt.style.columnGap = !cfg.layoutEnabledG ? '' : spacingCorrection + 'px'; // cfg.spacing + 'px';
+            gdt.style.rowGap = !cfg.layoutEnabledG ? '' : cfg.rowSpacing + 'px';
 
-            const totalRequiredWidthG = clientWidthG_gdt + layout.marginAdjustmentG;
+            const totalRequiredWidthG = clientWidthG_gdt + layout.marginAdjustmentG - 4; // 减去 body-padding:2
             if (cfg.layoutEnabledG && totalRequiredWidthG > viewportW + 0.1) {
                 document.body.style.minWidth = totalRequiredWidthG + 'px';
             } else {
                 document.body.style.minWidth = '';
             }
 
-            const isLargerWidth = cfg.layoutEnabledG && (clientWidthG_gdt >= 720 + 670 + 14); //1460
-            adjustSearchBox(isLargerWidth);
+            const isLargerWidth = cfg.layoutEnabledG && (clientWidthG_gdt >= 720 + 670 + 14); // 1404 = 720 + 670 + ( idi-padding:5 + idi-border:2 ) * 2
+            adjustSearchBox(isLargerWidth, clientWidthG_gdt);
         }
     }
 
@@ -2794,9 +2815,11 @@
     let isWideSearchBox = null;
 
     /** 调整搜索盒子 */
-    function adjustSearchBox(isLargerWidth) {
+    function adjustSearchBox(isLargerWidth, availableWidth = 720) {
         const searchbox = $i('searchbox'); // 搜索盒子
-        if (isWideSearchBox !== isLargerWidth && searchbox) {
+        if (!searchbox) return;
+
+        if (isWideSearchBox !== isLargerWidth) {
             const tbody = searchbox.querySelector('tbody');
             if (tbody) {
                 if (!initialRowTDs) {
@@ -2829,13 +2852,14 @@
                 }
             }
 
-            // 调整搜索盒子大小
-            if ($c('idi')[0]) { $c('idi')[0].style.width = (isLargerWidth ? 720 + 670 : 720) + 'px'; }
-            if ($c('idi')[1]) { $c('idi')[1].style.width = (isLargerWidth ? 720 + 670 : 720) + 'px'; }
-            if ($i('f_search')) { $i('f_search').style.width = (isLargerWidth ? 560 + 670 : 560) + 'px'; }
-
             isWideSearchBox = isLargerWidth;
         }
+
+        // 调整搜索盒子大小
+        const idiWidth = Math.min(720, availableWidth);
+        if ($c('idi')[0]) { $c('idi')[0].style.width = (isLargerWidth ? 720 + 670 : idiWidth) + 'px'; }
+        if ($c('idi')[1]) { $c('idi')[1].style.width = (isLargerWidth ? 720 + 670 : idiWidth) + 'px'; }
+        if ($i('f_search')) { $i('f_search').style.width = (isLargerWidth ? 560 + 670 : 560) + 'px'; }
     }
 
     /** 修改列表页缩略图大小 */
@@ -5865,7 +5889,7 @@
         } else {
             nb.style.width = 'max-content';
             nb.style.minWidth = '710px';
-            nb.style.maxWidth = '1200px';
+            nb.style.maxWidth = 'calc(100% - 36px)';
             nb.style.gap = '2px';
         }
     }
@@ -6030,6 +6054,25 @@
         }
     }
 
+    /** 监听元素属性变化，触发回调函数 */
+    function observeElement(el, callback, options = { attributes: true, attributeFilter: ['style', 'class'] }) {
+        if (!el || el.dataset.loliconObserved) return;
+        el.dataset.loliconObserved = 'true';
+        new MutationObserver((mutations) => {
+            if (cfg.logLevel <= 0) {
+                mutations.forEach(m => {
+                    if (m.type === 'childList') {
+                        m.addedNodes.forEach(node => console.log('LOLICON observe added', el.id || el.tagName, node));
+                        m.removedNodes.forEach(node => console.log('LOLICON observe removed', el.id || el.tagName, node));
+                    } else if (m.type === 'attributes') {
+                        console.log('LOLICON observe attribute', el.id || el.tagName, m.attributeName, el);
+                    }
+                });
+            }
+            callback(mutations);
+        }).observe(el, options);
+    }
+
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
     // 初始化与事件绑定
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
@@ -6133,6 +6176,7 @@
         applyChanges();
         bindEvents();
 
+        observeElement(document.head, debouncedApplyChanges, { childList: true });
         if (cfg.logLevel <= 0) console.log('LOLICON 启动 结束');
     }
 
