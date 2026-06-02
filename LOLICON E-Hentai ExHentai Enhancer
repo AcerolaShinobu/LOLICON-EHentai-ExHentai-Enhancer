@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.06.01
+// @version             2026.06.02
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Thumbnail Hover Zoom
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、缩略图悬浮放大
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、縮略圖懸浮放大
@@ -389,8 +389,13 @@
             #gmid.lolicon-gmid-grid #gd4 { grid-area: gd4; width: auto; min-width: 0; }
             #gmid.lolicon-gmid-grid #tagmenu_act,
             #gmid.lolicon-gmid-grid #tagmenu_new { width: calc(100% - 30px) !important; }
-            #gmid.lolicon-gmid-grid #tagmenu_new > form { display: flex; }
-            #gmid.lolicon-gmid-grid #tagmenu_new > form #newtagfield { flex: auto; width: 0 !important; }
+            #gmid.lolicon-gmid-grid #tagmenu_new > form { display: flex !important; width: 100% !important; }
+            #gmid.lolicon-gmid-grid #tagmenu_new > form #newtagfield {
+                flex: 1 1 0 !important;
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
             #gmid.lolicon-gmid-grid #gd5 { grid-area: gd5; }
         `,
 
@@ -3776,7 +3781,7 @@
     }
 
     /** 处理搜索标签按钮的点击事件，在搜索框中添加或移除对应的标签 */
-    function toggleTag(tag) {
+    function toggleTag(tag, focus = true) {
         if (!searchBox.input) return;
 
         // 获取按钮代表的标签集合（可能有多个词），并进行标准化处理
@@ -3804,11 +3809,11 @@
         searchBox.input.value = inputTokens.join(' ').trim(); // 更新输入框
         // 触发 input 事件以通知其他监听器（包括 updateActiveStyles）
         searchBox.input.dispatchEvent(new Event('input', { bubbles: true }));
-        if (inputDevice === 'mouse') searchBox.input.focus();
+        if (inputDevice === 'mouse' && focus) searchBox.input.focus();
     }
 
     /** 处理搜索标签按钮的滚轮事件，切换标签状态 */
-    function handleTagWheel(e, tag) {
+    function handleTagWheel(e, tag, focus = true) {
         e.preventDefault();
         if (!searchBox.input) return;
 
@@ -3851,7 +3856,7 @@
 
         searchBox.input.value = nextInputTokens.join(' ').trim();
         searchBox.input.dispatchEvent(new Event('input', { bubbles: true }));
-        if (inputDevice === 'mouse') searchBox.input.focus();
+        if (inputDevice === 'mouse' && focus) searchBox.input.focus();
     }
 
     /** 处理搜索框的双击事件，选中光标所在位置的完整 token */
@@ -5064,9 +5069,9 @@
         $i('toppane').style.display = 'block';
 
         if (e.type === 'click') {
-            toggleTag(tagToken);
+            toggleTag(tagToken, false);
         } else if (e.type === 'wheel') {
-            handleTagWheel(e, tagToken);
+            handleTagWheel(e, tagToken, false);
         }
     };
 
