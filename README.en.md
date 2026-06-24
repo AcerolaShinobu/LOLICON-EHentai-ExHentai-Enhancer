@@ -48,7 +48,7 @@ Userscript:
   - Supports left-click to add or remove tags, mouse wheel to cycle through match modes (OR ~ Orange / Exclude - Red)
 - **Tag Auto-Complete** - Provides tag suggestions in the search bar, gallery tag input, and quick tag add panel
   - Hold Ctrl/Cmd while clicking a suggestion to insert it as an exclude tag (adds a - prefix)
-  - Powered by [EhTagTranslation](https://github.com/EhTagTranslation/Database) tag database, first use requires a one-time ~5MB download
+  - Powered by [EhTagTranslation](https://github.com/EhTagTranslation/Database) tag database, first use requires a one-time ~6MB download
 - **Search Enhancements** - Double-click inside the search box to select the full tag. The search button supports right-click/Ctrl+click to open in a new tab. The clear button only clears the input and does not refresh the page
 - **Gallery Categories Enhancement** - Right-click to single-select a category (auto-deselects others)
 
@@ -56,7 +56,9 @@ Userscript:
 
 - **Infinite Scroll (List)** - Automatically load the next page when you scroll to the bottom
 - **More Thumbnails (Gallery)** - Automatically load more thumbnails as you scroll in the gallery page
-  - Both features above support a configurable auto-load page limit (Default: 0 = Unlimited). After reaching the limit, you can still load more manually, and previous pages can also be loaded manually
+  - Both features above support a configurable auto-load page limit (Default: 0 = Unlimited)
+  - Supports continuous loading by automatically following newly loaded content, with configurable auto-load delay
+  - After reaching the limit, you can still load more manually, and previous pages can also be loaded manually
 - **Quick Favorite** - Add to favorites without popups. Supports multiple layouts, with optional click or hover to open
 - **Scrollable Thumbnails** - Transform the gallery page thumbnail area into an independent scrolling container to maintain page layout stability when viewing numerous thumbnails
 
