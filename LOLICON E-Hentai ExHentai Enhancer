@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.06.12
+// @version             2026.06.24
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Hover Zoom
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图悬浮放大
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮略圖懸浮放大
@@ -295,8 +295,8 @@
         max_ColumnCountT: { pages: ['T'], def: 5, step: 1, min: 1, max: 100 }, // 列表页缩略图最大列数
         min_FixedWidthT: { pages: ['T'], def: 740, step: 1, min: 740, max: 10000 }, // 列表页缩略图最小宽度
         max_FixedWidthT: { pages: ['T'], def: 1370, step: 1, min: 740, max: 10000 }, // 列表页缩略图最大宽度
-        min_zoomFactorT: { pages: ['T'], def: 0.5, step: 0.01, min: 0.5, max: 10 }, // 列表页缩略图最小缩放
-        max_zoomFactorT: { pages: ['T'], def: 2, step: 0.01, min: 0.5, max: 10 }, // 列表页缩略图最大缩放
+        min_ZoomFactorT: { pages: ['T'], def: 0.5, step: 0.01, min: 0.5, max: 10 }, // 列表页缩略图最小缩放
+        max_ZoomFactorT: { pages: ['T'], def: 2, step: 0.01, min: 0.5, max: 10 }, // 列表页缩略图最大缩放
         squareMode: { pages: ['T'], def: false }, // 方形缩略图
         margin: { pages: ['T'], def: 10, step: 1, min: 0, max: 100 }, // 缩略图边距
         pageMarginL: { pages: ['L', 'S'], def: 10, step: 1, min: 0, max: 1000 }, // 列表页页面外边距
@@ -313,8 +313,8 @@
         max_ColumnCountG: { pages: ['G'], def: 5, step: 1, min: 1, max: 100 }, // 画廊页缩略图最大列数
         min_FixedWidthG: { pages: ['G'], def: 700, step: 1, min: 700, max: 10000 }, // 画廊页缩略图最小宽度
         max_FixedWidthG: { pages: ['G'], def: 1200, step: 1, min: 700, max: 10000 }, // 画廊页缩略图最大宽度
-        min_zoomFactorG: { pages: ['G'], def: 0.5, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最小缩放
-        max_zoomFactorG: { pages: ['G'], def: 2, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最大缩放
+        min_ZoomFactorG: { pages: ['G'], def: 0.5, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最小缩放
+        max_ZoomFactorG: { pages: ['G'], def: 2, step: 0.01, min: 0.5, max: 10 }, // 画廊页缩略图最大缩放
         spacing: { pages: ['G'], def: 20, step: 1, min: 0, max: 100 }, // 缩略图间距
         rowSpacing: { pages: ['G'], def: 15, step: 1, min: 0, max: 100 }, // 缩略图行间距
         pageMarginG: { pages: ['G'], def: 10, step: 1, min: 0, max: 1000 }, // 画廊页页面外边距
@@ -338,14 +338,24 @@
         hoverDelayG: { pages: ['G'], def: 1, step: 0.1, min: 0.1, max: 10 }, // 画廊页悬浮显示延迟 (s)
         hoverLoadLargeImageG: { pages: ['G'], def: false }, // 画廊页悬浮加载大图
 
-        // 功能开关
+        // 列表页无限滚动
         infiniteScroll: { pages: ['L'], def: true }, // 无限滚动 (列表)
         maxPagesL: { pages: ['L'], def: 0, step: 1, min: 0, max: 1000 }, // 最大页数 [0 = 无限] (列表)
+        followNewContentL: { pages: ['L'], def: false }, // 跟随最新内容 (列表)
+        autoLoadDelayL: { pages: ['L'], def: 2, step: 0.1, min: 1, max: 10 }, // 自动加载延迟 (s) (列表)
+
+        // 画廊页更多缩略图
         moreThumbnail: { pages: ['G'], def: true }, // 更多缩略图 (画廊)
         maxPagesG: { pages: ['G'], def: 0, step: 1, min: 0, max: 1000 }, // 最大页数 [0 = 无限] (画廊)
+        followNewContentG: { pages: ['G'], def: false }, // 跟随最新内容 (画廊)
+        autoLoadDelayG: { pages: ['G'], def: 2, step: 0.1, min: 1, max: 10 }, // 自动加载延迟 (s) (画廊)
+
+        // 快捷收藏
         quickFavorite: { pages: ['L', 'G'], def: true }, // 快捷收藏
         favLayout: { pages: ['L', 'G'], def: 0, options: ['A : 1x10', 'B : 2x5', 'C : 2x5', 'D : 5x2'] }, // 收藏夹布局
         favHover: { pages: ['L', 'G'], def: false }, // 悬浮收藏
+
+        // 其他功能
         tagSearchG: { pages: ['G'], def: true }, // 画廊标签搜索
         quickTag: { pages: ['G', 'S'], def: true }, // 快捷标签
         tagAutoComplete: { pages: ['G', 'S'], def: false }, // 标签自动补全
@@ -432,8 +442,14 @@
 
         // 变量
         vars: /* css */ `
-            body { --lolicon-primary-rgb: 0, 0, 0; --lolicon-bg-rgb: 255, 255, 255; --lolicon-text-rgb: 22, 22, 22; --lolicon-eh-text-rgb: 92, 13, 17; }
-            body.ex, body.tor { --lolicon-primary-rgb: 255, 255, 255; --lolicon-bg-rgb: 0, 0, 0; --lolicon-text-rgb: 234, 234, 234; --lolicon-eh-text-rgb: 221, 221, 221; }
+            body {
+                --lolicon-primary-rgb: 0, 0, 0; --lolicon-bg-rgb: 255, 255, 255; --lolicon-text-rgb: 22, 22, 22;
+                --lolicon-eh-bg1-rgb: 227, 224, 209; --lolicon-eh-bg2-rgb: 237, 235, 223; --lolicon-eh-text-rgb: 92, 13, 17;
+            }
+            body.ex, body.tor {
+                --lolicon-primary-rgb: 255, 255, 255; --lolicon-bg-rgb: 0, 0, 0; --lolicon-text-rgb: 234, 234, 234;
+                --lolicon-eh-bg1-rgb: 52, 53, 59; --lolicon-eh-bg2-rgb: 79, 83, 91; --lolicon-eh-text-rgb: 221, 221, 221;
+            }
         `,
 
         // 设置页面样式
@@ -621,6 +637,17 @@
             }
             .lolicon-settings-control-row.is-advanced label {
                 color: #FF4400;
+            }
+            .lolicon-risk-icon {
+                padding: 6px;
+                cursor: help;
+                opacity: 0.6;
+                font-size: 14px;
+                transition: opacity 0.2s ease;
+                user-select: none;
+            }
+            .lolicon-risk-icon:hover {
+                opacity: 1;
             }
             #lolicon-settings-panel input[type='number'] {
                 width: 10ch;
@@ -910,6 +937,7 @@
                 display: inline-block;
                 width: 16px;
                 height: 16px;
+                margin-right: 6px;
                 border: 4px solid rgba(120, 120, 120, 0.36);
                 border-radius: 50%;
                 border-top-color: currentColor;
@@ -922,12 +950,38 @@
                 display: inline-block;
                 color: inherit;
                 user-select: none;
-                margin-left: 10px;
                 vertical-align: middle;
                 line-height: 24px;
             }
             .lolicon-loading-status-text.loading-end {
                 opacity: 0.6;
+            }
+            div.lolicon-load-cooldown,
+            tr.lolicon-load-cooldown > td {
+                position: relative;
+                overflow: hidden;
+            }
+            div.lolicon-load-cooldown::before,
+            tr.lolicon-load-cooldown > td::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: 6px;
+                background: linear-gradient(
+                    90deg,
+                    hsl(200, 100%, 50%),
+                    hsl(180, 100%, 50%),
+                    hsl(200, 100%, 50%)
+                );
+                will-change: transform;
+                transform-origin: left;
+                animation: lolicon-cooldown-progress var(--lolicon-cooldown-duration, 2s) linear forwards;
+            }
+            @keyframes lolicon-cooldown-progress {
+                from { transform: scaleX(0); }
+                to   { transform: scaleX(1); }
             }
         `,
 
@@ -1139,7 +1193,7 @@
             'ko': '최대 너비',
             'ru': 'Макс. ширина',
         },
-        'min_zoomFactor': {
+        'min_ZoomFactor': {
             'en': 'Min Zoom',
             'zh-CN': '最小缩放',
             'zh-TW': '最小縮放',
@@ -1147,7 +1201,7 @@
             'ko': '최소 확대 비율',
             'ru': 'Мин. масштаб',
         },
-        'max_zoomFactor': {
+        'max_ZoomFactor': {
             'en': 'Max Zoom',
             'zh-CN': '最大缩放',
             'zh-TW': '最大縮放',
@@ -1332,12 +1386,28 @@
             'ru': 'Больше миниатюр (галерея)',
         },
         'maxPages': {
-            'en': 'Max Pages [0 = Unlimited]',
-            'zh-CN': '最大页数 [0 = 无限]',
-            'zh-TW': '最大頁數 [0 = 無限]',
-            'ja': '最大ページ数 [0 = 無制限]',
-            'ko': '최대 페이지 [0 = 무한]',
-            'ru': 'Макс. страниц [0 = Бесконечно]',
+            'en': 'Max Auto-load Pages [0 = Unlimited]',
+            'zh-CN': '最大自动加载页数 [0 = 无限]',
+            'zh-TW': '最大自動載入頁數 [0 = 無限]',
+            'ja': '最大自動読み込みページ数 [0 = 無制限]',
+            'ko': '최대 자동 로드 페이지 수 [0 = 무한]',
+            'ru': 'Макс. страниц автозагрузки [0 = Бесконечно]',
+        },
+        'followNewContent': {
+            'en': 'Auto-scroll After Loading',
+            'zh-CN': '加载后自动跟随滚动',
+            'zh-TW': '載入後自動跟隨捲動',
+            'ja': '読み込み後に自動スクロール',
+            'ko': '로드 후 자동 스크롤',
+            'ru': 'Автопрокрутка после загрузки',
+        },
+        'autoLoadDelay': {
+            'en': 'Continuous Auto-load Delay (s)',
+            'zh-CN': '连续自动加载延迟 (s)',
+            'zh-TW': '連續自動載入延遲 (s)',
+            'ja': '連続自動読み込み遅延 (s)',
+            'ko': '연속 자동 로드 지연 (s)',
+            'ru': 'Задержка непрерывной автозагрузки (s)',
         },
         'quickFavorite': {
             'en': 'Quick Favorite',
@@ -1652,36 +1722,76 @@
             'ru': 'Имя тега повторяется\n\n',
         },
         'loading': {
-            'en': 'Loading...',
-            'zh-CN': '正在加载...',
-            'zh-TW': '正在載入...',
-            'ja': '読み込み中...',
-            'ko': '로드 중...',
-            'ru': 'Загрузка...',
+            'en': 'Loading',
+            'zh-CN': '正在加载',
+            'zh-TW': '正在載入',
+            'ja': '読み込み中',
+            'ko': '로드 중',
+            'ru': 'Загрузка',
         },
-        'loadMoreContent': {
-            'en': '--- Load more ---',
-            'zh-CN': '--- 加载更多 ---',
-            'zh-TW': '--- 載入更多 ---',
-            'ja': '--- さらに読み込む ---',
-            'ko': '--- 더 불러오기 ---',
-            'ru': '--- Загрузить ещё ---',
+        'autoLoad': {
+            'en': 'Auto Load',
+            'zh-CN': '自动加载',
+            'zh-TW': '自動載入',
+            'ja': '自動読み込み',
+            'ko': '자동 로드',
+            'ru': 'Автозагрузка',
+        },
+        'clickLoad': {
+            'en': 'Click to Load',
+            'zh-CN': '点击加载',
+            'zh-TW': '點擊載入',
+            'ja': 'クリックして読み込む',
+            'ko': '클릭하여 로드',
+            'ru': 'Нажмите, чтобы загрузить',
         },
         'noMoreContent': {
-            'en': '--- No more content ---',
-            'zh-CN': '--- 没有更多内容 ---',
-            'zh-TW': '--- 沒有更多內容 ---',
-            'ja': '--- これ以上ありません ---',
-            'ko': '--- 더 이상 없음 ---',
-            'ru': '--- Контент закончился ---',
+            'en': 'No more content',
+            'zh-CN': '没有更多内容',
+            'zh-TW': '沒有更多內容',
+            'ja': 'これ以上ありません',
+            'ko': '더 이상 없음',
+            'ru': 'Контент закончился',
         },
         'loadFailedRetry': {
-            'en': '--- Load failed · Retry ---',
-            'zh-CN': '--- 加载失败 · 重试 ---',
-            'zh-TW': '--- 載入失敗 · 重試 ---',
-            'ja': '--- 読み込み失敗 · 再試行 ---',
-            'ko': '--- 로드 실패 · 다시 시도 ---',
-            'ru': '--- Ошибка · Повторить ---',
+            'en': 'Load failed • Retry',
+            'zh-CN': '加载失败 • 重试',
+            'zh-TW': '載入失敗 • 重試',
+            'ja': '読み込み失敗 • 再試行',
+            'ko': '로드 실패 • 다시 시도',
+            'ru': 'Ошибка • Повторить',
+        },
+        'riskWarning': {
+            'en': 'Frequent requests may trigger access limits',
+            'zh-CN': '频繁请求可能触发访问限制',
+            'zh-TW': '頻繁請求可能觸發訪問限制',
+            'ja': '頻繁なリクエストはアクセス制限を引き起こす可能性があります',
+            'ko': '빈번한 요청은 접근 제한을 유발할 수 있습니다',
+            'ru': 'Частые запросы могут привести к ограничению доступа',
+        },
+        'riskWarningQuota': {
+            'en': 'Loading large images will consume your Image Viewing Quota',
+            'zh-CN': '加载大图会消耗图片查看配额',
+            'zh-TW': '載入大圖會消耗圖片查看配額',
+            'ja': '大きな画像の読み込みは画像表示クォータを消費します',
+            'ko': '큰 이미지를 로드하면 이미지 조회 할당량이 소모됩니다',
+            'ru': 'Загрузка больших изображений расходует квоту просмотра изображений',
+        },
+        'riskWarningMemory': {
+            'en': 'Loading too much content may consume excessive memory and cause lag',
+            'zh-CN': '加载过多内容会占用大量内存，可能导致页面卡顿',
+            'zh-TW': '載入過多內容會佔用大量記憶體，可能導致頁面卡頓',
+            'ja': 'コンテンツの読み込みすぎは大量のメモリを消費し、カクつきの原因になります',
+            'ko': '과도한 콘텐츠 로드는 많은 메모리를 사용하여 페이지가 느려질 수 있습니다',
+            'ru': 'Загрузка слишком большого объёма контента может перегрузить память и вызвать зависания',
+        },
+        'riskWarningAutoLoad': {
+            'en': 'May automatically load excessive content',
+            'zh-CN': '可能自动加载过多内容',
+            'zh-TW': '可能自動載入過多內容',
+            'ja': '過剰なコンテンツを自動的に読み込む可能性があります',
+            'ko': '과도한 콘텐츠를 자동으로 로드할 수 있습니다',
+            'ru': 'Может автоматически загружать слишком много контента',
         },
     };
 
@@ -1988,8 +2098,67 @@
     // 4. 设置面板
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
+    /** 风险规则：dependsOn 为 OR of ANDs — 外层数组 OR，内层数组 AND */
+    const riskRules = {
+        fetchInterval: { warn: 'riskWarning', warnMin: 1 },
+        fetchMaxConcurrent: { warn: 'riskWarning', warnMax: 2 },
+        hoverLoadLargeImageT: { warn: 'riskWarningQuota', toggle: true },
+        hoverLoadLargeImageG: { warn: 'riskWarningQuota', toggle: true },
+        maxPagesL: { warn: 'riskWarningMemory', warnAt: 0, warnMax: 10 },
+        maxPagesG: { warn: 'riskWarningMemory', warnAt: 0, warnMax: 10 },
+        followNewContentL: { warn: 'riskWarningAutoLoad', toggle: true, dependsOn: [['maxPagesL']] },
+        followNewContentG: { warn: 'riskWarningAutoLoad', toggle: true, dependsOn: [['maxPagesG']] },
+        autoLoadDelayL: { warn: 'riskWarning', warnMin: 2, dependsOn: [['maxPagesL', 'followNewContentL']] },
+        autoLoadDelayG: { warn: 'riskWarning', warnMin: 2, dependsOn: [['maxPagesG', 'followNewContentG']] },
+    };
+
+    /** 判断当前值是否触发风险 */
+    function isRiskActive(name) {
+        const risk = riskRules[name];
+        if (!risk) return false;
+        if (risk.dependsOn) {
+            if (!risk.dependsOn.some(g => g.every(d => checkRiskValue(d)))) return false;
+        }
+        return checkRiskValue(name);
+    }
+
+    /** 检查某项的值是否触发风险 */
+    function checkRiskValue(key) {
+        const risk = riskRules[key];
+        if (!risk) return false;
+        const value = cfg[key];
+        if (risk.toggle) return value === true;
+        if (risk.warnAt !== undefined && value === risk.warnAt) return true;
+        if (risk.warnMin !== undefined && value < risk.warnMin) return true;
+        if (risk.warnMax !== undefined && value > risk.warnMax) return true;
+        return false;
+    }
+
+    /** 生成风险图标 HTML */
+    function createRiskIconHTML(key) {
+        return `<span class="lolicon-risk-icon" title="${translate(riskRules[key].warn || 'riskWarning')}">⚠</span>`;
+    }
+
+    /** 更新所有风险图标 */
+    function updateRiskIcon() {
+        for (const key of Object.keys(riskRules)) {
+            const label = $(`label[for="${key}Input"]`);
+            if (label) {
+                const icon = label.querySelector('.lolicon-risk-icon');
+                if (isRiskActive(key)) {
+                    if (!icon) {
+                        label.insertAdjacentHTML('beforeend', createRiskIconHTML(key));
+                    }
+                } else {
+                    icon?.remove();
+                }
+            }
+        }
+    }
+
     /** 创建控件 HTML */
     function createControlHTML(type, name, value, options = {}) {
+        const riskHtml = isRiskActive(name) ? createRiskIconHTML(name) : '';
         const classes = ['lolicon-settings-control-row'];
         if (options.isInactive) classes.push('is-inactive');
         if (options.isAdvanced) classes.push('is-advanced');
@@ -2005,14 +2174,14 @@
                 const { step, min, max } = config[name];
                 return `
                 <div class="${rowClass}" ${combinedStyle}>
-                    <label for="${name}Input">${translate(name)}</label>
+                    <label for="${name}Input">${translate(name)}${riskHtml}</label>
                     <input type="number" id="${name}Input" value="${value}" step="${step}" min="${min}" max="${max}">
                 </div>`;
             }
             case 'checkbox': {
                 return `
                 <div class="${rowClass}" ${combinedStyle}>
-                    <label for="${name}Input">${translate(name)}</label>
+                    <label for="${name}Input">${translate(name)}${riskHtml}</label>
                     <input type="checkbox" id="${name}Input" ${value ? "checked" : ""}>
                 </div>`;
             }
@@ -2023,7 +2192,7 @@
                 ).join('');
                 return `
                 <div class="${rowClass}" ${combinedStyle}>
-                    <label for="${name}Input">${translate(name)}</label>
+                    <label for="${name}Input">${translate(name)}${riskHtml}</label>
                     <select id="${name}Input">${optionsHTML}</select>
                 </div>`;
             }
@@ -2066,8 +2235,8 @@
             ['zoomFactorT', true, 0],
             ['columnCountT', true, 1],
             ['layoutSizeModeT', true, 0],
-            ['min_zoomFactorT', true, 1],
-            ['max_zoomFactorT', true, 1],
+            ['min_ZoomFactorT', true, 1],
+            ['max_ZoomFactorT', true, 1],
         ],
         layoutSizeModeT: [
             ['min_ColumnCountT', true, 1],
@@ -2086,8 +2255,8 @@
             ['zoomFactorG', true, 0],
             ['columnCountG', true, 1],
             ['layoutSizeModeG', true, 0],
-            ['min_zoomFactorG', true, 1],
-            ['max_zoomFactorG', true, 1],
+            ['min_ZoomFactorG', true, 1],
+            ['max_ZoomFactorG', true, 1],
         ],
         layoutSizeModeG: [
             ['min_ColumnCountG', true, 1],
@@ -2115,8 +2284,10 @@
             ['hoverScaleLimitG', true, 0],
             ['hoverDisplayModeG', true, 1],
         ],
-        infiniteScroll: [['maxPagesL']],
-        moreThumbnail: [['maxPagesG']],
+        infiniteScroll: [['maxPagesL'], ['followNewContentL']],
+        moreThumbnail: [['maxPagesG'], ['followNewContentG']],
+        followNewContentL: [['autoLoadDelayL']],
+        followNewContentG: [['autoLoadDelayG']],
         quickFavorite: [['favLayout'], ['favHover']],
         tagSearchG: [['quickTag']],
     };
@@ -2474,6 +2645,7 @@
         if (validateConfigValue(key, numValue, cfg, true)) {
             updateCfg(key, numValue);
             applyChanges();
+            updateRiskIcon();
         }
     }
 
@@ -2484,6 +2656,7 @@
         updateCfg(key, checked);
         applyChanges();
         tryRefreshPanel(key);
+        updateRiskIcon();
     }
 
     /** 下拉菜单变化事件 */
@@ -2494,6 +2667,7 @@
         updateCfg(key, numValue);
         applyChanges();
         tryRefreshPanel(key);
+        updateRiskIcon();
     }
 
     /** 处理数字输入框的滚轮事件 */
@@ -2590,6 +2764,12 @@
             if (val === undefined) {
                 const baseKey = key.replace(/[TLG]$/, '');
                 const candidateOldKeys = [baseKey, baseKey + 'S'];
+
+                // min_/max_ 首字母大写迁移（如 min_zoomFactorT → min_ZoomFactorT）
+                for (const k of [key, baseKey]) {
+                    const lower = k.replace(/^(min_|max_)([A-Z])/, (_, p, c) => p + c.toLowerCase());
+                    if (lower !== k && !candidateOldKeys.includes(lower)) candidateOldKeys.push(lower);
+                }
 
                 for (const oldKey of candidateOldKeys) {
                     if (oldKey === key) continue; // 防止同名配置自杀
@@ -2730,10 +2910,10 @@
             } else if (cfg.layoutControlModeT === 1) { // 列数优先模式 计算缩放
                 let idealZoom = (clientWidthLO / cfg.columnCountT - cfg.margin * 2 - border) / 250;
                 let idealColumn = cfg.columnCountT;
-                if (idealZoom > cfg.max_zoomFactorT) {
-                    idealZoom = cfg.max_zoomFactorT;
-                } else if (idealZoom < cfg.min_zoomFactorT) {
-                    idealZoom = cfg.min_zoomFactorT;
+                if (idealZoom > cfg.max_ZoomFactorT) {
+                    idealZoom = cfg.max_ZoomFactorT;
+                } else if (idealZoom < cfg.min_ZoomFactorT) {
+                    idealZoom = cfg.min_ZoomFactorT;
                     idealColumn = Math.max(1, Math.floor(clientWidthLO / (250 * idealZoom + cfg.margin * 2 + border)));
                 }
                 layout.zoomFactorT = idealZoom;
@@ -2764,10 +2944,10 @@
             } else if (cfg.layoutControlModeG === 1) { // 列数优先模式 计算缩放
                 let idealZoom = ((clientWidthGO / cfg.columnCountG - border) / thumbScale - cfg.spacing) / 100;
                 let idealColumn = cfg.columnCountG;
-                if (idealZoom > cfg.max_zoomFactorG) {
-                    idealZoom = cfg.max_zoomFactorG;
-                } else if (idealZoom < cfg.min_zoomFactorG) {
-                    idealZoom = cfg.min_zoomFactorG;
+                if (idealZoom > cfg.max_ZoomFactorG) {
+                    idealZoom = cfg.max_ZoomFactorG;
+                } else if (idealZoom < cfg.min_ZoomFactorG) {
+                    idealZoom = cfg.min_ZoomFactorG;
                     idealColumn = Math.max(1, Math.floor(clientWidthGO / ((100 * idealZoom + cfg.spacing) * thumbScale + border)));
                 }
                 layout.zoomFactorG = idealZoom;
@@ -5664,11 +5844,28 @@
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
     /** 页面加载状态管理 */
-    const nextPage = { isLoading: false, pageLink: null, isError: false, loadedCount: 1 };
-    const prevPage = { isLoading: false, pageLink: null, isError: false };
+    const nextPage = { pageLink: null, isLoading: false, isError: false, loadedCount: 1 };
+    const prevPage = { pageLink: null, isLoading: false, isError: false };
 
-    /** 观察者实例 */
-    let scrollObserver = null;
+    /** 滚动触发状态 */
+    const scrollCtrl = { nextObserver: null, nextVisible: false, cooldownTimer: null };
+
+    /** 让 next 方向的加载按钮保持在视口内，避免被新插入的内容推出屏幕 */
+    function keepIndicatorInView() {
+        const rect = $i('lolicon-next-indicator').getBoundingClientRect();
+        if (pageInfo.isGalleryPage && cfg.thumbScroll) {
+            const gdt = $i('gdt');
+            if (!gdt) return;
+            const gdtRect = gdt.getBoundingClientRect();
+            const gdtOvf = rect.bottom - gdtRect.bottom + 15;
+            if (gdtOvf > 0) gdt.scrollBy(0, gdtOvf);
+            const winOvf = gdtRect.bottom - window.innerHeight + 25;
+            if (winOvf > 0) window.scrollBy(0, winOvf);
+        } else {
+            const winOvf = rect.bottom - window.innerHeight + 40;
+            if (winOvf > 0) window.scrollBy(0, winOvf);
+        }
+    }
 
     /** 提取并更新页面链接 */
     function updatePageLink(doc, direction = 'both') {
@@ -5705,6 +5902,12 @@
         }
     }
 
+    /** 获取空闲状态：autoLoad（自动加载）或 clickLoad（需手动点击）*/
+    function getIdleStatus(direction) {
+        if (direction === 'prev') return 'clickLoad';
+        return (cfg.maxPages !== 0 && nextPage.loadedCount >= cfg.maxPages) ? 'clickLoad' : 'autoLoad';
+    }
+
     /** 无限滚动加载页面内容 */
     async function loadPage(direction = 'next') {
         const isNext = direction === 'next';
@@ -5712,6 +5915,7 @@
         if (state.isLoading || !state.pageLink) return;
 
         state.isLoading = true;
+        let hasNewContent = false; // 本轮是否插入了新内容，用于 finally 块判断
         updateLoadingStatus('loading', direction); // 显示加载中
         try {
             if (cfg.logLevel <= 0) console.log(`LOLICON 加载${isNext ? '下' : '上'}一页：`, state.pageLink);
@@ -5729,6 +5933,7 @@
             }
 
             if (contentNodes.length > 0) {
+                hasNewContent = true;
                 const fragment = document.createDocumentFragment();
                 contentNodes.forEach((item, index) => {
                     if (pageInfo.listDisplayMode === 't' || pageInfo.listDisplayMode === 'e' || pageInfo.isGalleryPage || index > 0) {
@@ -5763,10 +5968,8 @@
 
             if (state.pageLink) {
                 if (cfg.logLevel <= 0) console.log(`LOLICON ${isNext ? '下' : '上'}一页链接已更新。`);
-                updateLoadingStatus('idle', direction);
             } else {
                 if (cfg.logLevel <= 0) console.log(isNext ? 'LOLICON 已是最后一页' : 'LOLICON 已追溯至第一页');
-                updateLoadingStatus('end', direction);
             }
 
         } catch (error) {
@@ -5774,13 +5977,34 @@
             updateLoadingStatus('error', direction);
         } finally {
             state.isLoading = false;
+            if (isNext && hasNewContent && cfg.followNewContent && scrollCtrl.nextVisible) requestAnimationFrame(keepIndicatorInView);
 
-            if (isNext && !state.isError && state.pageLink) {
-                const indicator = $i('lolicon-next-indicator');
-                if (indicator && scrollObserver) {
-                    scrollObserver.unobserve(indicator);
-                    scrollObserver.observe(indicator);
+            const hitMaxPages = cfg.maxPages !== 0 && nextPage.loadedCount >= cfg.maxPages;
+
+            if (isNext && hasNewContent && !state.isError && state.pageLink && !hitMaxPages) {
+                const nextInd = $i('lolicon-next-indicator');
+                const resubscribe = () => {
+                    nextInd?.classList.remove('lolicon-load-cooldown');
+                    scrollCtrl.cooldownTimer = null;
+                    if (nextInd && scrollCtrl.nextObserver) {
+                        scrollCtrl.nextObserver.unobserve(nextInd);
+                        scrollCtrl.nextObserver.observe(nextInd);
+                    }
+                };
+
+                if (cfg.followNewContent && scrollCtrl.nextVisible) {
+                    if (nextInd) {
+                        nextInd.style.setProperty('--lolicon-cooldown-duration', cfg.autoLoadDelay - 0.2 + 's');
+                        nextInd.classList.add('lolicon-load-cooldown');
+                    }
+                    scrollCtrl.cooldownTimer = setTimeout(resubscribe, cfg.autoLoadDelay * 1000);
+                } else {
+                    resubscribe();
                 }
+            }
+
+            if (!state.isError) {
+                updateLoadingStatus(state.pageLink ? getIdleStatus(direction) : 'end', direction);
             }
         }
     }
@@ -5810,7 +6034,7 @@
                 } else {
                     parent.insertBefore(container, parent.firstElementChild.nextElementSibling);
                 }
-                status = 'idle';
+                status = getIdleStatus(direction);
             }
         }
 
@@ -5824,20 +6048,27 @@
         container.style.display = '';
 
         // 配置状态内容
+        const countHtml = `<span class="lolicon-loading-count">${pageItemsData.length}</span>`;
         const statusHtmlMap = {
-            idle: `<span class="lolicon-loading-status-text loading-link">${translate('loadMoreContent')}</span>`,
-            loading: `<div class="lolicon-loading-spinner"></div><span class="lolicon-loading-status-text">${translate('loading')}</span>`,
-            end: `<span class="lolicon-loading-status-text loading-end">${translate('noMoreContent')}</span>`,
-            error: `<span class="lolicon-loading-status-text loading-link">${translate('loadFailedRetry')}</span>`,
+            autoLoad: `<span class="lolicon-loading-status-text loading-link">--- ${translate('autoLoad')} • ${countHtml} ---</span>`,
+            clickLoad: `<span class="lolicon-loading-status-text loading-link">--- ${translate('clickLoad')} • ${countHtml} ---</span>`,
+            loading: `<div class="lolicon-loading-spinner"></div><span class="lolicon-loading-status-text">${translate('loading')} • ${countHtml}</span>`,
+            end: `<span class="lolicon-loading-status-text loading-end">--- ${translate('noMoreContent')} • ${countHtml} ---</span>`,
+            error: `<span class="lolicon-loading-status-text loading-link">--- ${translate('loadFailedRetry')} • ${countHtml} ---</span>`,
         };
 
         // 更新 UI
         if (status !== 'toggle') {
             const target = isTable ? container.firstElementChild : container;
             target.innerHTML = statusHtmlMap[status];
+
+            for (const el of $c('lolicon-loading-count')) {
+                el.textContent = pageItemsData.length;
+            }
+
             const state = isNext ? nextPage : prevPage;
             state.isError = (status === 'error');
-            container.onclick = (status === 'error' || status === 'idle') ? () => {
+            container.onclick = (status === 'error' || status === 'autoLoad' || status === 'clickLoad') ? () => {
                 state.isError = false; // 解锁
                 throttledLoadPage(direction);
             } : null;
@@ -5852,38 +6083,45 @@
     /** 滚动监控 加载下一页 */
     function setupScrollObserver() {
         const configKey = pageInfo.isGalleryPage ? 'moreThumbnail' : 'infiniteScroll';
-        const maxPagesKey = pageInfo.isGalleryPage ? 'maxPagesG' : 'maxPagesL';
         if (!nextPage.pageLink) {
             updateLoadingStatus('end');
             return;
         }
-        updateLoadingStatus('idle');
-        const indicator = $i('lolicon-next-indicator');
-        if (scrollObserver) scrollObserver.disconnect();
-        scrollObserver = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting && !nextPage.isLoading && !nextPage.isError && cfg[configKey]) {
+        updateLoadingStatus(getIdleStatus('next'));
+        const nextInd = $i('lolicon-next-indicator');
+
+        if (scrollCtrl.nextObserver) scrollCtrl.nextObserver.disconnect();
+        scrollCtrl.nextObserver = new IntersectionObserver(([entry]) => {
+            scrollCtrl.nextVisible = entry.isIntersecting;
+
+            if (entry.isIntersecting && !nextPage.isLoading && !nextPage.isError && cfg[configKey] && !scrollCtrl.cooldownTimer) {
 
                 if (!nextPage.pageLink) {
                     updateLoadingStatus('end');
-                    scrollObserver.unobserve(indicator);
+                    scrollCtrl.nextObserver.unobserve(nextInd);
                     return;
                 }
 
-                const maxPageLimit = cfg[maxPagesKey];
-                if (maxPageLimit !== 0 && nextPage.loadedCount >= maxPageLimit) {
-                    if (cfg.logLevel <= 0) console.log('LOLICON 已达到最大页数限制: ', nextPage.loadedCount, ' >= ', maxPageLimit);
-                    updateLoadingStatus('idle');
+                if (cfg.maxPages !== 0 && nextPage.loadedCount >= cfg.maxPages) {
+                    if (cfg.logLevel <= 0) console.log('LOLICON 已达到最大页数限制: ', nextPage.loadedCount, ' >= ', cfg.maxPages);
+                    updateLoadingStatus('clickLoad');
                     return;
                 }
 
                 throttledLoadPage();
+
+            } else if (!entry.isIntersecting && scrollCtrl.cooldownTimer) {
+                // indicator 滚出视口，取消冷却：清除计时器、移除动画
+                clearTimeout(scrollCtrl.cooldownTimer);
+                scrollCtrl.cooldownTimer = null;
+                nextInd.classList.remove('lolicon-load-cooldown');
             }
         }, {
             root: (pageInfo.isGalleryPage && cfg.thumbScroll) ? $i('gdt') : null,
             rootMargin: '-24px',
         });
 
-        if (indicator) scrollObserver.observe(indicator);
+        if (nextInd) scrollCtrl.nextObserver.observe(nextInd);
     }
 
     /** 元素位置 */
