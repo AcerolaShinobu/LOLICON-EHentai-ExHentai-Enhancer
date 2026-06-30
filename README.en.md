@@ -3,7 +3,7 @@
 **English** | [简体中文](README.md)
 
 Personal userscript
-Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Hover Zoom
+Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Preview
 
 ## Install
 
@@ -23,16 +23,17 @@ Userscript:
 - **Page Margin/Padding** - Adjust spacing between the page container, window, and content
 - **Full Width Layout** - Expand the page to the maximum available width
 
-### Thumbnail Hover Zoom
+### Thumbnail Preview
 
-- **Thumbnail Hover Zoom** - Show enlarged preview on hover (configurable separately for List and Gallery)
-- **Initial Preview Size** - Calculation logic for preview size, choose Fixed Scale or Fit to Screen
-- **Fixed Scale** - Display preview using the configured zoom scale
-- **Fit to Screen** - Automatically calculate optimal preview size based on window size
-- **Scale Limit** - Restrict the maximum preview size
-- **Display Mode** - Choose whether preview is contained or covers the viewport
-- **Display Delay** - The waiting time before the preview is triggered on hover
-- **Load Large Image** - Optionally load high-res preview images to replace blurry thumbnails (Note: consumes viewing quota)
+- **Thumbnail Preview Mode** - Show enlarged preview on hover or via shortcut. Supports **Off** / **Hover** / **Shortcut** / **Hover + Shortcut** (configurable separately for List and Gallery)
+- **Hover Delay** - The waiting time before preview is triggered on hover
+- **Preview Shortcut** - Choose the shortcut key (Ctrl or Shift) to trigger preview, with optional **auto-close on key release**
+- **Auto-Close on Leave** - Automatically close the preview when the mouse leaves the preview area
+- **Initial Preview Size** - Calculation logic for preview size. Choose **Fixed Scale** or **Fit to Screen**
+- **Fixed Scale** - Display preview at the configured **Zoom Scale**, with optional **Scale Limit** to restrict the maximum size
+- **Fit to Screen** - Automatically calculate optimal preview size based on window size; **Fit Mode** offers **Contain** or **Cover**
+- **Auto Load Large Image** - When enabled, automatically loads the high-resolution image when preview opens, replacing the blurry thumbnail (Note: consumes viewing quota)
+- **Keyboard Shortcuts** - While preview is open, press Space to load the large image or cycle through preview sizes, use ← → arrow keys to switch to adjacent thumbnails
 
 ### Search & Tags
 
@@ -59,7 +60,7 @@ Userscript:
   - Both features above support a configurable auto-load page limit (Default: 0 = Unlimited)
   - Supports continuous loading by automatically following newly loaded content, with configurable auto-load delay
   - After reaching the limit, you can still load more manually, and previous pages can also be loaded manually
-- **Quick Favorite** - Add to favorites without popups. Supports multiple layouts, with optional click or hover to open
+- **Quick Favorite** - Add to favorites without popups. Supports multiple layouts, choose between click and hover to open
 - **Scrollable Thumbnails** - Transform the gallery page thumbnail area into an independent scrolling container to maintain page layout stability when viewing numerous thumbnails
 
 ### Other Features
