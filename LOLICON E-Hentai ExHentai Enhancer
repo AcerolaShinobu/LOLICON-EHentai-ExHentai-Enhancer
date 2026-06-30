@@ -6,13 +6,13 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.06.24
-// @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Hover Zoom
-// @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图悬浮放大
-// @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮略圖懸浮放大
-// @description:ja      ウィンドウ自動適応、サムネイル調整（サイズ・間隔・列数）、クイックお気に入り、無限スクロール、サムネイル追加読み込み、クイックタグ & 検索強化、タグ自動補完、サムネイルホバー拡大
-// @description:ko      자동 창 크기 조절, 썸네일 조절(크기/간격/열 수), 빠른 즐겨찾기, 무한 스크롤, 썸네일 더보기, 빠른 태그 & 검색 강화, 태그 자동 완성, 썸네일 호버 확대
-// @description:ru      Автоматическая подгонка окна, Настройка миниатюр (размер/отступ/Количество колонок), Быстрое добавление в избранное, Бесконечная прокрутка, Загрузка дополнительных миниатюр, Быстрые теги & поиск улучшены, Автодополнение тегов, Увеличение при наведении на миниатюру
+// @version             2026.06.30
+// @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Preview
+// @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图预览
+// @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮圖預覽
+// @description:ja      ウィンドウ自動適応、サムネイル調整（サイズ・間隔・列数）、クイックお気に入り、無限スクロール、サムネイル追加読み込み、クイックタグ & 検索強化、タグ自動補完、サムネイルプレビュー
+// @description:ko      자동 창 크기 조절, 썸네일 조절(크기/간격/열 수), 빠른 즐겨찾기, 무한 스크롤, 썸네일 더보기, 빠른 태그 & 검색 강화, 태그 자동 완성, 썸네일 미리보기
+// @description:ru      Автоматическая подгонка окна, Настройка миниатюр (размер/отступ/Количество колонок), Быстрое добавление в избранное, Бесконечная прокрутка, Загрузка дополнительных миниатюр, Быстрые теги & поиск улучшены, Автодополнение тегов, Предпросмотр миниатюр
 // @icon                https://e-hentai.org/favicon.ico
 // @match               *://e-hentai.org/*
 // @match               *://exhentai.org/*
@@ -118,6 +118,13 @@
     const throttledGetRowInfo = throttle(getRowInfo, 240);
     /** 加载页面内容-节流 */
     const throttledLoadPage = throttle(loadPage, 600); //, { trailing: false }
+
+    /** 阻止非控制键传播（放行修饰键及 Escape） */
+    const blockNonControlKey = (e) => {
+        const tag = e.target.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && !e.target.isContentEditable) return;
+        if (!['Control', 'Shift', 'Alt', 'Meta', 'Escape'].includes(e.key)) e.stopPropagation();
+    };
 
     /** Fetch 发包限速队列 */
     const queuedFetch = (() => {
@@ -320,23 +327,29 @@
         pageMarginG: { pages: ['G'], def: 10, step: 1, min: 0, max: 1000 }, // 画廊页页面外边距
         fullWidthModeG: { pages: ['G'], def: false }, // 画廊页全宽布局
 
-        // 列表页缩略图悬浮放大
-        thumbHoverZoomT: { pages: ['T'], def: true }, // 列表页缩略图悬浮放大
-        hoverSizeModeT: { pages: ['T'], def: 0, options: ['FixedScale', 'FitToScreen'] }, // 列表页悬浮初始显示尺寸
-        hoverScaleT: { pages: ['T'], def: 2, step: 0.01, min: 1, max: 20 }, // 列表页悬浮缩放倍率
-        hoverScaleLimitT: { pages: ['T'], def: 1, options: ['NoLimit', 'Contain', 'Cover'] }, // 列表页悬浮缩放限制
-        hoverDisplayModeT: { pages: ['T'], def: 0, options: ['Contain', 'Cover'] }, // 列表页悬浮显示方式
-        hoverDelayT: { pages: ['T'], def: 1, step: 0.1, min: 0.1, max: 10 }, // 列表页悬浮显示延迟 (s)
-        hoverLoadLargeImageT: { pages: ['T'], def: false }, // 列表页悬浮加载大图
+        // 列表页缩略图预览
+        thumbPreviewT: { pages: ['T'], def: 1, options: ['off', 'hover', 'shortcut', ['hover', ' + ', 'shortcut']] }, // 列表页缩略图预览模式
+        previewDelayT: { pages: ['T'], def: 1, step: 0.1, min: 0.1, max: 10 }, // 列表页预览悬停延迟 (s)
+        previewShortcutT: { pages: ['T'], def: 0, options: ['ctrl', 'shift'] }, // 列表页预览快捷键
+        previewReleaseCloseT: { pages: ['T'], def: true }, // 列表页松键关闭预览
+        previewCloseOnLeaveT: { pages: ['T'], def: true }, // 列表页移出预览框自动关闭
+        previewSizeModeT: { pages: ['T'], def: 0, options: ['FixedScale', 'FitToScreen'] }, // 列表页预览初始尺寸
+        previewScaleT: { pages: ['T'], def: 2, step: 0.01, min: 1, max: 20 }, // 列表页预览缩放倍率
+        previewScaleLimitT: { pages: ['T'], def: 1, options: ['NoLimit', 'Contain', 'Cover'] }, // 列表页预览缩放限制
+        previewDisplayModeT: { pages: ['T'], def: 0, options: ['Contain', 'Cover'] }, // 列表页预览显示方式
+        previewLargeImageT: { pages: ['T'], def: false }, // 列表页自动加载大图
 
-        // 画廊页缩略图悬浮放大
-        thumbHoverZoomG: { pages: ['G'], def: true }, // 画廊页缩略图悬浮放大
-        hoverSizeModeG: { pages: ['G'], def: 0, options: ['FixedScale', 'FitToScreen'] }, // 画廊页悬浮初始显示尺寸
-        hoverScaleG: { pages: ['G'], def: 2, step: 0.01, min: 1, max: 20 }, // 画廊页悬浮缩放倍率
-        hoverScaleLimitG: { pages: ['G'], def: 1, options: ['NoLimit', 'Contain', 'Cover'] }, // 画廊页悬浮缩放限制
-        hoverDisplayModeG: { pages: ['G'], def: 0, options: ['Contain', 'Cover'] }, // 画廊页悬浮显示方式
-        hoverDelayG: { pages: ['G'], def: 1, step: 0.1, min: 0.1, max: 10 }, // 画廊页悬浮显示延迟 (s)
-        hoverLoadLargeImageG: { pages: ['G'], def: false }, // 画廊页悬浮加载大图
+        // 画廊页缩略图预览
+        thumbPreviewG: { pages: ['G'], def: 1, options: ['off', 'hover', 'shortcut', ['hover', ' + ', 'shortcut']] }, // 画廊页缩略图预览模式
+        previewDelayG: { pages: ['G'], def: 1, step: 0.1, min: 0.1, max: 10 }, // 画廊页预览悬停延迟 (s)
+        previewShortcutG: { pages: ['G'], def: 0, options: ['ctrl', 'shift'] }, // 画廊页预览快捷键
+        previewReleaseCloseG: { pages: ['G'], def: true }, // 画廊页松键关闭预览
+        previewCloseOnLeaveG: { pages: ['G'], def: true }, // 画廊页移出预览框自动关闭
+        previewSizeModeG: { pages: ['G'], def: 0, options: ['FixedScale', 'FitToScreen'] }, // 画廊页预览初始尺寸
+        previewScaleG: { pages: ['G'], def: 2, step: 0.01, min: 1, max: 20 }, // 画廊页预览缩放倍率
+        previewScaleLimitG: { pages: ['G'], def: 1, options: ['NoLimit', 'Contain', 'Cover'] }, // 画廊页预览缩放限制
+        previewDisplayModeG: { pages: ['G'], def: 0, options: ['Contain', 'Cover'] }, // 画廊页预览显示方式
+        previewLargeImageG: { pages: ['G'], def: false }, // 画廊页自动加载大图
 
         // 列表页无限滚动
         infiniteScroll: { pages: ['L'], def: true }, // 无限滚动 (列表)
@@ -728,15 +741,19 @@
             @keyframes lolicon-shimmer {
                 to { transform: translateX(100%) skewX(-24deg); }
             }
-            .lolicon-hover-enabled .lolicon-hover-hint:hover {
+            .lolicon-hover-outline .lolicon-hover-thumb:hover,
+            .lolicon-hover-outline .lolicon-hover-thumb.lolicon-thumb-focus {
                 position: relative;
                 z-index: 2;
                 outline: 6px solid hsl(200, 100%, 50%);
                 outline-offset: -1px;
                 filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.6));
-                animation: lolicon-hover-glow var(--lolicon-hover-duration, 1s) ease-in-out forwards;
             }
-            @keyframes lolicon-hover-glow {
+            .lolicon-hover-glow .lolicon-hover-thumb:hover,
+            .lolicon-hover-glow .lolicon-hover-thumb.lolicon-thumb-focus {
+                animation: lolicon-hover-glow-anim var(--lolicon-hover-duration, 1s) ease-in-out forwards;
+            }
+            @keyframes lolicon-hover-glow-anim {
                 0% { outline-color: hsl(200, 100%, 50%); }
                 20% { outline-color: hsl(180, 100%, 50%); }
                 40% { outline-color: hsl(140, 100%, 50%); }
@@ -999,7 +1016,7 @@
             .lolicon-autocomplete-dropdown {
                 position: absolute;
                 background: #f8f4ec;
-                color: #5c0d12;
+                color: rgb(var(--lolicon-eh-text-rgb));
                 border-radius: 4px;
                 box-shadow: 0 1px 3px 0 rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 2px 1px -1px rgba(0,0,0,.12);
                 max-height: 50vh;
@@ -1010,7 +1027,7 @@
                 min-width: 200px;
                 overscroll-behavior: contain;
             }
-            body.ex .lolicon-autocomplete-dropdown { background: #2b2b2b; color: #f1f1f1; }
+            body.ex .lolicon-autocomplete-dropdown { background: #2b2b2b; }
             .lolicon-autocomplete-dropdown:empty { display: none; }
             .lolicon-autocomplete-dropdown.exclude .ac-sub::before { content: '- '; }
             .lolicon-autocomplete-item {
@@ -1265,23 +1282,55 @@
             'ko': '전체 너비 레이아웃',
             'ru': 'Полная ширина макета',
         },
-        'thumbHoverZoomT': {
-            'en': 'Thumbnail Hover Zoom (List)',
-            'zh-CN': '缩略图悬浮放大 (列表页)',
-            'zh-TW': '縮圖懸浮放大 (列表頁)',
-            'ja': 'サムネイルホバー拡大 (リスト)',
-            'ko': '썸네일 호버 확대 (리스트)',
-            'ru': 'Увеличение миниатюр (список)',
+        'thumbPreviewT': {
+            'en': 'Thumbnail Preview (List)',
+            'zh-CN': '缩略图预览 (列表页)',
+            'zh-TW': '縮圖預覽 (列表頁)',
+            'ja': 'サムネイルプレビュー (リスト)',
+            'ko': '썸네일 미리보기 (리스트)',
+            'ru': 'Предпросмотр миниатюр (список)',
         },
-        'thumbHoverZoomG': {
-            'en': 'Thumbnail Hover Zoom (Gallery)',
-            'zh-CN': '缩略图悬浮放大 (画廊页)',
-            'zh-TW': '縮圖懸浮放大 (畫廊頁)',
-            'ja': 'サムネイルホバー拡大 (ギャラリー)',
-            'ko': '썸네일 호버 확대 (갤러리)',
-            'ru': 'Увеличение миниатюр (галерея)',
+        'thumbPreviewG': {
+            'en': 'Thumbnail Preview (Gallery)',
+            'zh-CN': '缩略图预览 (画廊页)',
+            'zh-TW': '縮圖預覽 (畫廊頁)',
+            'ja': 'サムネイルプレビュー (ギャラリー)',
+            'ko': '썸네일 미리보기 (갤러리)',
+            'ru': 'Предпросмотр миниатюр (галерея)',
         },
-        'hoverSizeMode': {
+        'previewDelay': {
+            'en': 'Hover Delay (s)',
+            'zh-CN': '悬停延迟 (s)',
+            'zh-TW': '懸停延遲 (s)',
+            'ja': 'ホバー遅延 (s)',
+            'ko': '호버 지연 (s)',
+            'ru': 'Задержка наведения (s)',
+        },
+        'previewShortcut': {
+            'en': 'Preview Shortcut',
+            'zh-CN': '预览快捷键',
+            'zh-TW': '預覽快捷鍵',
+            'ja': 'プレビューショートカット',
+            'ko': '미리보기 단축키',
+            'ru': 'Горячая клавиша предпросмотра',
+        },
+        'previewReleaseClose': {
+            'en': 'Release Key to Close Preview',
+            'zh-CN': '松开按键关闭预览',
+            'zh-TW': '放開按鍵關閉預覽',
+            'ja': 'キーを離してプレビューを閉じる',
+            'ko': '키를 놓으면 미리보기 닫기',
+            'ru': 'Отпустить клавишу для закрытия',
+        },
+        'previewCloseOnLeave': {
+            'en': 'Auto Close Preview on Leave',
+            'zh-CN': '移出预览框自动关闭',
+            'zh-TW': '移出預覽框自動關閉',
+            'ja': 'プレビューから離れると自動で閉じる',
+            'ko': '미리보기에서 벗어나면 자동 닫기',
+            'ru': 'Автоматически закрывать при уходе',
+        },
+        'previewSizeMode': {
             'en': 'Initial Preview Size',
             'zh-CN': '初始预览尺寸',
             'zh-TW': '初始預覽尺寸',
@@ -1305,7 +1354,7 @@
             'ko': '화면에 맞춤',
             'ru': 'Подогнать под экран',
         },
-        'hoverScale': {
+        'previewScale': {
             'en': 'Zoom Scale',
             'zh-CN': '缩放倍率',
             'zh-TW': '縮放倍率',
@@ -1313,7 +1362,7 @@
             'ko': '확대 배율',
             'ru': 'Масштаб зума',
         },
-        'hoverScaleLimit': {
+        'previewScaleLimit': {
             'en': 'Scale Limit',
             'zh-CN': '缩放限制',
             'zh-TW': '縮放限制',
@@ -1321,8 +1370,8 @@
             'ko': '확대 제한',
             'ru': 'Ограничение масштаба',
         },
-        'hoverDisplayMode': {
-            'en': 'Display Mode',
+        'previewDisplayMode': {
+            'en': 'Fit Mode',
             'zh-CN': '显示方式',
             'zh-TW': '顯示方式',
             'ja': '表示方法',
@@ -1353,21 +1402,45 @@
             'ko': '화면 채우기',
             'ru': 'Заполнить с обрезкой',
         },
-        'hoverDelay': {
-            'en': 'Display Delay (s)',
-            'zh-CN': '显示延迟 (s)',
-            'zh-TW': '顯示延遲 (s)',
-            'ja': '表示遅延 (s)',
-            'ko': '표시 지연 (s)',
-            'ru': 'Задержка (s)',
+        'previewLargeImage': {
+            'en': 'Auto Load Large Image',
+            'zh-CN': '自动加载大图',
+            'zh-TW': '自動加載大圖',
+            'ja': '大きな画像を自動読み込み',
+            'ko': '대형 이미지 자동 로드',
+            'ru': 'Автозагрузка больших изображений',
         },
-        'hoverLoadLargeImage': {
-            'en': 'Load Large Image',
-            'zh-CN': '加载大图',
-            'zh-TW': '加載大圖',
-            'ja': '大きい画像を読み込む',
-            'ko': '대형 이미지 로드',
-            'ru': 'Загрузка больших изображений',
+        'none': {
+            'en': 'None',
+            'zh-CN': '无',
+            'zh-TW': '無',
+            'ja': 'なし',
+            'ko': '없음',
+            'ru': 'Нет',
+        },
+        'off': {
+            'en': 'Off',
+            'zh-CN': '关闭',
+            'zh-TW': '關閉',
+            'ja': 'オフ',
+            'ko': '끄기',
+            'ru': 'Выкл',
+        },
+        'hover': {
+            'en': 'Hover',
+            'zh-CN': '悬停',
+            'zh-TW': '懸停',
+            'ja': 'ホバー',
+            'ko': '호버',
+            'ru': 'Наведение',
+        },
+        'shortcut': {
+            'en': 'Shortcut',
+            'zh-CN': '快捷键',
+            'zh-TW': '快捷鍵',
+            'ja': 'ショートカット',
+            'ko': '단축키',
+            'ru': 'Горячая клавиша',
         },
         'infiniteScroll': {
             'en': 'Infinite Scroll (List)',
@@ -1810,7 +1883,7 @@
         return template.replace(/{{(.*?)}}/g, (_, key) => values[key.trim()] ?? '');
     }
 
-    /** 包装 Proxy */
+    /** 包装 Proxy, 访问带 [TLG] 后缀 key 时，若无对应翻译，自动回退到去掉后缀的 base key */
     const translations = new Proxy(_translations, {
         get(target, prop) {
             // 如果访问的是 xxxRange
@@ -1818,7 +1891,7 @@
             if (rangeMatch) {
                 let baseKey = rangeMatch[1];
 
-                // 处理 TLG 后缀
+                // 处理 [TLG] 后缀
                 const suffixMatch = baseKey.match(/^(.+)([TLG])$/);
                 if (suffixMatch) {
                     const pureKey = suffixMatch[1];
@@ -1844,7 +1917,7 @@
                 return output;
             }
 
-            // 处理 TLG 后缀
+            // 处理 [TLG] 后缀
             const suffixMatch = prop.match(/^(.+)([TLG])$/);
             if (suffixMatch) {
                 const baseKey = suffixMatch[1];
@@ -1936,7 +2009,7 @@
         hasSearchBox: !!$i('f_search') || !!$('form[action*="favorites.php"] input[name="f_search"]'), // 是否存在搜索框
     };
 
-    /** 设置后缀 TLG */
+    /** 当前页面生效的配置 [TLG] 后缀列表 */
     const cfgSuffixes =
         pageInfo.listDisplayMode === 't' ? ['T', 'L'] :
             pageInfo.listDisplayMode ? ['L'] :
@@ -2102,8 +2175,8 @@
     const riskRules = {
         fetchInterval: { warn: 'riskWarning', warnMin: 1 },
         fetchMaxConcurrent: { warn: 'riskWarning', warnMax: 2 },
-        hoverLoadLargeImageT: { warn: 'riskWarningQuota', toggle: true },
-        hoverLoadLargeImageG: { warn: 'riskWarningQuota', toggle: true },
+        previewLargeImageT: { warn: 'riskWarningQuota', toggle: true },
+        previewLargeImageG: { warn: 'riskWarningQuota', toggle: true },
         maxPagesL: { warn: 'riskWarningMemory', warnAt: 0, warnMax: 10 },
         maxPagesG: { warn: 'riskWarningMemory', warnAt: 0, warnMax: 10 },
         followNewContentL: { warn: 'riskWarningAutoLoad', toggle: true, dependsOn: [['maxPagesL']] },
@@ -2264,25 +2337,31 @@
             ['min_FixedWidthG', true, 2],
             ['max_FixedWidthG', true, 2],
         ],
-        thumbHoverZoomT: [
-            ['hoverSizeModeT'],
-            ['hoverDelayT'],
-            ['hoverLoadLargeImageT'],
+        thumbPreviewT: [
+            ['previewDelayT', true, [1, 3]],
+            ['previewShortcutT', true, [2, 3]],
+            ['previewCloseOnLeaveT', true, [1, 2, 3]],
+            ['previewSizeModeT', true, [1, 2, 3]],
+            ['previewLargeImageT', true, [1, 2, 3]],
         ],
-        hoverSizeModeT: [
-            ['hoverScaleT', true, 0],
-            ['hoverScaleLimitT', true, 0],
-            ['hoverDisplayModeT', true, 1],
+        previewShortcutT: [['previewReleaseCloseT', true, [0, 1]]],
+        previewSizeModeT: [
+            ['previewScaleT', true, 0],
+            ['previewScaleLimitT', true, 0],
+            ['previewDisplayModeT', true, 1],
         ],
-        thumbHoverZoomG: [
-            ['hoverSizeModeG'],
-            ['hoverDelayG'],
-            ['hoverLoadLargeImageG'],
+        thumbPreviewG: [
+            ['previewDelayG', true, [1, 3]],
+            ['previewShortcutG', true, [2, 3]],
+            ['previewCloseOnLeaveG', true, [1, 2, 3]],
+            ['previewSizeModeG', true, [1, 2, 3]],
+            ['previewLargeImageG', true, [1, 2, 3]],
         ],
-        hoverSizeModeG: [
-            ['hoverScaleG', true, 0],
-            ['hoverScaleLimitG', true, 0],
-            ['hoverDisplayModeG', true, 1],
+        previewShortcutG: [['previewReleaseCloseG', true, [0, 1]]],
+        previewSizeModeG: [
+            ['previewScaleG', true, 0],
+            ['previewScaleLimitG', true, 0],
+            ['previewDisplayModeG', true, 1],
         ],
         infiniteScroll: [['maxPagesL'], ['followNewContentL']],
         moreThumbnail: [['maxPagesG'], ['followNewContentG']],
@@ -2498,9 +2577,7 @@
         enablePanelDrag(panel, false, 0, 60);
 
         // 防止触发全局快捷键
-        panel.addEventListener('keydown', (e) => {
-            e.stopPropagation();
-        }, true);
+        panel.addEventListener('keydown', blockNonControlKey, true);
 
         // 面板整体的行为与按钮绑定
         panel.addEventListener('input', (e) => {
@@ -2540,7 +2617,7 @@
         }
     }
 
-    /** 更新配置并同步基础键名 cfg - [TLG] */
+    /** 更新配置(同时写入带 [TLG] 后缀 key 和无后缀别名 key，业务代码统一用无后缀访问) */
     function updateCfg(key, value) {
         cfg[key] = value;
         for (const s of cfgSuffixes) {
@@ -2756,6 +2833,19 @@
         panel.remove();
     }
 
+    // 配置项重命名迁移表：新 key → [旧 key, ...]
+    const cfgRenameMap = {
+        min_ZoomFactor: ['min_zoomFactor'],
+        max_ZoomFactor: ['max_zoomFactor'],
+        thumbPreview: ['thumbHoverZoom'],
+        previewSizeMode: ['hoverSizeMode'],
+        previewScale: ['hoverScale'],
+        previewScaleLimit: ['hoverScaleLimit'],
+        previewDisplayMode: ['hoverDisplayMode'],
+        previewDelay: ['hoverDelay'],
+        previewLargeImage: ['hoverLoadLargeImage'],
+    };
+
     /** 初始化设置：如果为空则保存初始值，并兼容旧配置迁移 */
     function initialize() {
         for (const [key, cfgItem] of Object.entries(config)) {
@@ -2763,12 +2853,16 @@
 
             if (val === undefined) {
                 const baseKey = key.replace(/[TLG]$/, '');
+                const suffix = key.slice(baseKey.length); // 'T', 'L', 'G' 或 ''
                 const candidateOldKeys = [baseKey, baseKey + 'S'];
 
-                // min_/max_ 首字母大写迁移（如 min_zoomFactorT → min_ZoomFactorT）
-                for (const k of [key, baseKey]) {
-                    const lower = k.replace(/^(min_|max_)([A-Z])/, (_, p, c) => p + c.toLowerCase());
-                    if (lower !== k && !candidateOldKeys.includes(lower)) candidateOldKeys.push(lower);
+                // 从 cfgRenameMap 查找旧 key（自动尝试带相同 [TLG] 后缀及无后缀的变体）
+                const oldNames = cfgRenameMap[baseKey];
+                if (oldNames) {
+                    for (const oldName of oldNames) {
+                        candidateOldKeys.push(oldName + suffix);
+                        candidateOldKeys.push(oldName);
+                    }
                 }
 
                 for (const oldKey of candidateOldKeys) {
@@ -2781,6 +2875,12 @@
                         break;
                     }
                 }
+            }
+
+            // 迁移：thumbPreview boolean → 0/1（旧版无快捷键，true=悬停，false=关闭）
+            if ((key === 'thumbPreviewT' || key === 'thumbPreviewG') && typeof val === 'boolean') {
+                val = val ? 1 : 0;
+                GM_setValue(key, val);
             }
 
             if (val === undefined) {
@@ -3346,32 +3446,173 @@
     }
 
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
-    // 6. 缩略图悬浮放大
+    // 6. 缩略图预览
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
 
     /** 全局状态与常量定义 */
     const PREVIEW_MARGIN = 6; // 预览框距离窗口边缘的最小间距
-    let hoverTimer = null; // 悬浮延迟用的定时器
+
+    /** 快捷键触发状态 */
+    const shortcutState = {
+        ctrl: false, // Ctrl 键是否按下
+        shift: false, // Shift 键是否按下
+        handled: false, // 修饰键事件是否已处理（用于过滤 OS 按键 repeat）
+        byKey: false, // 当前预览是否由快捷键触发
+    };
+
+    /** 指针相关状态 */
+    const pointerState = {
+        mouseX: -1, mouseY: -1, // 鼠标实时物理坐标
+        staleX: null, staleY: null, // invalidateHover 时快照，用于甄别合成事件
+        hoverTimer: null, // 悬浮延迟的 setTimeout 定时器 ID
+        hoverTimerOwner: null, // 当前 hoverTimer 所属的 imgEl
+        focusedThumb: null, // 当前拥有 lolicon-thumb-focus 的缩略图元素
+    };
 
     /** 预览 DOM 引用 */
     const previewDOM = {
         link: null, // 预览框父元素 用于点击链接
-        container: null, // 预览框
+        container: null, // 预览框根容器元素
         thumbLayer: null, // 预览框缩略图层
         largeLayer: null, // 预览框大图层
-        shimmer: null, // 预览框动画
+        shimmer: null, // 预览框大图加载动画
     };
 
     /** 预览状态管理 */
     const previewState = {
-        active: false, // 是否显示预览
-        el: null, // 当前缩略图元素
+        active: false, // 预览生命周期是否激活（含延迟 pending 阶段）
+        el: null, // 内容已渲染的缩略图元素；仅 run() 中赋值，el 为真时 active 必为真
         data: null, // 关联的数据对象
         scale: 1, // 当前缩放比例
-        bw: 0, // 基础宽度
-        bh: 0, // 基础高度
+        bw: 0, // 原始缩略图经 zoomFactorO 调整后的宽度 (用于计算缩放约束)
+        bh: 0, // 原始缩略图经 zoomFactorO 调整后的高度 (用于计算缩放约束)
         isDragging: false, // 是否处于拖动状态
+        dragCenterX: 0, // 预览框拖拽后中心 X
+        dragCenterY: 0, // 预览框拖拽后中心 Y
+        lastManualScale: 1, // 上次非空格调整的缩放倍率
+        sizeMode: null, // 当前显示模式: null / 'custom' / 'contain' / 'cover'
     };
+
+    /** 标记即将发生程序触发的 DOM 变动，记录当前真实坐标用于事后甄别 */
+    function invalidateHover() {
+        pointerState.staleX = pointerState.mouseX;
+        pointerState.staleY = pointerState.mouseY;
+    }
+
+    /** 判断事件坐标是否与上次 invalidate 时一致（即合成事件） */
+    function isSyntheticPointerEvent(e) {
+        if (pointerState.staleX === null) return false;
+        return Math.abs(e.clientX - pointerState.staleX) <= 2 && Math.abs(e.clientY - pointerState.staleY) <= 2;
+    }
+
+    /** 追踪鼠标物理坐标，用于甄别合成事件 */
+    function onThumbPreviewPointerMove(e) {
+        if (cfg.thumbPreview >= 1 && e.pointerType === 'mouse') {
+            pointerState.mouseX = e.clientX;
+            pointerState.mouseY = e.clientY;
+        }
+    }
+
+    /** 校验当前配置的修饰键是否按下 */
+    function isModifierActive() {
+        return cfg.previewShortcut === 0 ? shortcutState.ctrl : shortcutState.shift;
+    }
+
+    /** 计算基于窗口尺寸的安全缩放上限 */
+    function getMaxScale(bw, bh) {
+        const maxScaleWidth = (window.innerWidth * 6) / bw;
+        const maxScaleHeight = (window.innerHeight * 6) / bh;
+        return Math.max(maxScaleWidth, maxScaleHeight);
+    }
+
+    /** 由全局配置推导预览框首次打开时的 sizeMode */
+    function getInitialSizeMode() {
+        if (cfg.previewSizeMode === 1) {
+            return cfg.previewDisplayMode === 0 ? 'contain' : 'cover';
+        }
+        return 'custom';
+    }
+
+    /** 根据 sizeMode 计算当次渲染应使用的 scale */
+    function computeScaleForMode(mode, { containLimit, coverLimit }, isInherited = false, isFirstOpen = false) {
+        if (mode === 'contain') return containLimit;
+        if (mode === 'cover') return coverLimit;
+        let s = isFirstOpen ? cfg.previewScale : previewState.lastManualScale;
+        if (isFirstOpen && cfg.previewSizeMode === 0) {
+            if (cfg.previewScaleLimit === 1) s = Math.min(s, containLimit);
+            else if (cfg.previewScaleLimit === 2) s = Math.min(s, coverLimit);
+        }
+        s = Math.max(1, s);
+        if (isInherited) {
+            const { bw, bh } = previewState;
+            s = Math.min(s, getMaxScale(bw, bh));
+        }
+        return s;
+    }
+
+    /** 全局修饰键状态变更处理引擎 */
+    function handleModifierChange() {
+        if (cfg.thumbPreview === 0 || cfg.thumbPreview === 1) return;
+
+        if (!isModifierActive()) return;
+
+        // 修饰键状态未变 → OS repeat，跳过
+        if (shortcutState.handled) return;
+
+        // 关闭/切换 — 松键关闭模式等 keyup，粘着模式按快捷键切换
+        if (previewState.active && !pointerState.hoverTimer) {
+            // 切换：由 startHover 从 :hover 检测目标；若切换至新目标则保留，否则关闭
+            const prevEl = previewState.el;
+            shortcutState.handled = true;
+            startHover(null, null, true);
+            if (previewState.el !== prevEl) {
+                shortcutState.byKey = true;
+                return; // 已切换至新目标
+            }
+            // 未切换：关闭
+            if (!cfg.previewReleaseClose || !shortcutState.byKey) {
+                hidePreview();
+            }
+            return;
+        }
+
+        // 打开 — 由 startHover 内部处理目标获取
+        shortcutState.handled = true;
+        shortcutState.byKey = true;
+        startHover(null, null, true);
+    }
+
+    /** 方向键切换预览到相邻缩略图 */
+    function navigatePreview(delta) {
+        if (!previewState.el) return;
+
+        const isList = pageInfo.listDisplayMode === 't';
+        const thumbEls = [...document.querySelectorAll('[data-lolicon-bound-hover]')];
+
+        const curThumbEl = isList
+            ? previewState.el.closest('[data-lolicon-bound-hover]')
+            : previewState.el;
+
+        const idx = thumbEls.indexOf(curThumbEl);
+        if (idx === -1) return;
+
+        const nextIdx = idx + delta;
+        if (nextIdx < 0 || nextIdx >= thumbEls.length) return;
+
+        const nextThumbEl = thumbEls[nextIdx];
+        const parentEl = isList ? nextThumbEl.closest('.gl1t') : nextThumbEl;
+        const data = parentEl?._loliconData;
+        if (!data) return;
+
+        const imgEl = isList ? data.img : data.el;
+        if (!imgEl) return;
+
+        if (isModifierActive()) shortcutState.byKey = true; // 修饰键按下时保持 shortcut 控制权
+
+        invalidateHover();
+        nextThumbEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        startHover(imgEl, data, true, true);
+    }
 
     /** 预览 DOM 初始化（只执行一次） */
     function initPreviewDOM() {
@@ -3379,6 +3620,7 @@
 
         previewDOM.link = $el('a');
         previewDOM.link.id = 'lolicon-preview-link';
+        previewDOM.link.target = '_blank';
         document.body.appendChild(previewDOM.link);
 
         previewDOM.container = $el('div');
@@ -3393,12 +3635,99 @@
         previewDOM.shimmer = previewDOM.container.querySelector('.lolicon-loading-shimmer');
         previewDOM.link.appendChild(previewDOM.container);
 
-        // 绑定预览框上的全局事件（只需绑定一次）
+        // 绑定预览框事件
         previewDOM.container.addEventListener('wheel', handleWheel, { passive: false }); // 滚轮缩放
         previewDOM.container.addEventListener('pointerdown', handlePointerDown); // 拖拽
         previewDOM.container.addEventListener('click', handleClick); // 防误点
-        previewDOM.container.addEventListener('pointerleave', hidePreview); // 鼠标离开关闭
-        document.addEventListener('keydown', (e) => { if (previewState.active && e.key === 'Escape') hidePreview(); }); // ESC 关闭
+        previewDOM.container.addEventListener('pointerleave', (e) => {
+            if (isSyntheticPointerEvent(e)) return;
+            if (cfg.previewCloseOnLeave) hidePreview(); // 鼠标离开关闭
+        });
+
+        document.addEventListener('pointerdown', (e) => {
+            if (previewState.active && !previewDOM.container.contains(e.target)) hidePreview();
+        });
+        document.addEventListener('contextmenu', (e) => {
+            if (previewState.active && !previewDOM.container.contains(e.target)) hidePreview();
+        });
+
+        /** 空格切换缩放-节流 */
+        const throttledToggleScale = throttle(() => {
+            if (previewState.el._largeImg || previewState.el._isFetching) {
+                const constraints = getPreviewConstraints();
+                const { containLimit, coverLimit } = constraints;
+
+                const candidates = [
+                    { mode: 'custom', scale: computeScaleForMode('custom', constraints) },
+                    { mode: 'contain', scale: containLimit },
+                    { mode: 'cover', scale: coverLimit },
+                ].sort((a, b) => a.scale - b.scale);
+
+                const cur = previewState.scale;
+                let next = candidates[0];
+                for (const c of candidates) {
+                    if (c.scale > cur + 0.01) { next = c; break; }
+                }
+
+                previewState.sizeMode = next.mode;
+                previewState.scale = next.scale;
+                renderPreview(true);
+            } else {
+                handleLargeImageLoading();
+            }
+        }, 60, { leading: true, trailing: false });
+
+        /** 方向键导航-节流 */
+        const throttledNavigatePreview = throttle((delta) => {
+            navigatePreview(delta);
+        }, 60, { leading: true, trailing: false });
+
+        // 注册全局键盘与失焦事件
+        document.addEventListener('keydown', (e) => {
+            if (previewState.active && e.key === 'Escape') {
+                hidePreview();
+                return;
+            }
+            if (previewState.el && e.key === ' ') {
+                e.preventDefault();
+                throttledToggleScale();
+                return;
+            }
+            if (previewState.el && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                throttledNavigatePreview(e.key === 'ArrowRight' ? 1 : -1);
+                return;
+            }
+            if (e.key === 'Control' || e.key === 'Shift') {
+                if (e.key === 'Control') shortcutState.ctrl = true;
+                if (e.key === 'Shift') shortcutState.shift = true;
+                handleModifierChange();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Control' || e.key === 'Shift') {
+                if (e.key === 'Control') {
+                    shortcutState.ctrl = false;
+                    if (cfg.previewShortcut === 0) shortcutState.handled = false;
+                }
+                if (e.key === 'Shift') {
+                    shortcutState.shift = false;
+                    if (cfg.previewShortcut === 1) shortcutState.handled = false;
+                }
+                // 松键关闭模式：松开修饰键时关闭由快捷键触发的预览
+                if (cfg.thumbPreview >= 2 && cfg.previewReleaseClose && shortcutState.byKey && previewState.active && !pointerState.hoverTimer) {
+                    shortcutState.byKey = false;
+                    hidePreview();
+                }
+            }
+        });
+        window.addEventListener('blur', () => {
+            shortcutState.ctrl = false;
+            shortcutState.shift = false;
+            shortcutState.handled = false;
+            shortcutState.byKey = false;
+            if (previewState.active) hidePreview();
+        });
     }
 
     /** 平衡预览框位置，确保不超出窗口边界 */
@@ -3411,13 +3740,10 @@
         return Math.max(PREVIEW_MARGIN, Math.min(pos, maxPos));
     }
 
-    /** 计算并更新预览框的几何属性（尺寸与位置），并返回计算结果 */
-    function updatePreviewGeometry(wheelEvent = null) {
-        if (!previewState.active) return;
-
-        const { bw, bh, scale, el, isDragging, data: { gl3t } } = previewState;
-        let pw, ph, left, top;
-        let scaleO = scale;
+    /** 计算基准尺寸与视口约束缩放值 */
+    function getPreviewConstraints() {
+        const { bw, bh, el } = previewState;
+        let pw, ph;
 
         // 被裁成正方形的横图
         const isWideThumbSquareMode = (pageInfo.listDisplayMode === 't' && cfg.layoutEnabledL && cfg.squareMode && bw > bh);
@@ -3435,28 +3761,29 @@
             ph = pw * eh / ew;
         }
 
-        // 初次显示
-        if (previewDOM.container.style.display !== 'block') {
-            const maxScaleWidth = (window.innerWidth - PREVIEW_MARGIN * 2) / pw;
-            const maxScaleHeight = (window.innerHeight - PREVIEW_MARGIN * 2) / ph;
-            const containLimit = Math.min(maxScaleWidth, maxScaleHeight);
-            const coverLimit = Math.max(maxScaleWidth, maxScaleHeight);
+        // 计算 viewport 约束
+        const maxScaleWidth = (window.innerWidth - PREVIEW_MARGIN * 2) / pw;
+        const maxScaleHeight = (window.innerHeight - PREVIEW_MARGIN * 2) / ph;
 
-            if (cfg.hoverSizeMode === 0) {
-                if (cfg.hoverScaleLimit === 1) scaleO = Math.min(scale, containLimit);
-                else if (cfg.hoverScaleLimit === 2) scaleO = Math.min(scale, coverLimit);
-                scaleO = Math.max(1, scaleO);
-            } else if (cfg.hoverSizeMode === 1) {
-                if (cfg.hoverDisplayMode === 0) scaleO = containLimit;
-                else if (cfg.hoverDisplayMode === 1) scaleO = coverLimit;
-            }
+        return { pw, ph, containLimit: Math.min(maxScaleWidth, maxScaleHeight), coverLimit: Math.max(maxScaleWidth, maxScaleHeight) };
+    }
 
-            previewState.scale = scaleO;
-        }
+    /** 计算并更新预览框的几何属性（尺寸与位置），并返回计算结果 */
+    function updatePreviewGeometry(wheelEvent = null, constraints = null) {
+        if (!previewState.active) return;
+
+        invalidateHover();
+
+        // 预览框渲染完成后停用 hover 发光动画（由 startHover 延迟路径重新启用）
+        (pageInfo.listDisplayMode === 't' ? $c('ido')[0] : $i('gdt')).classList.remove('lolicon-hover-glow');
+
+        const { scale, el, isDragging, data: { gl3t } } = previewState;
+        const { pw: basePw, ph: basePh } = constraints || getPreviewConstraints();
+        let left, top;
 
         // 最终缩放尺寸
-        pw = pw * scaleO;
-        ph = ph * scaleO;
+        const pw = basePw * scale;
+        const ph = basePh * scale;
 
         // 计算预览框位置
         if (isDragging) {
@@ -3467,6 +3794,13 @@
                 // 拖动后缩放：以鼠标为中心
                 left = rect.left - (wheelEvent.clientX - rect.left) * (pw / ow - 1);
                 top = rect.top - (wheelEvent.clientY - rect.top) * (ph / oh - 1);
+
+                previewState.dragCenterX = rect.left + rect.width / 2;
+                previewState.dragCenterY = rect.top + rect.height / 2;
+            } else if (previewState.dragCenterX && previewState.dragCenterY) {
+                // 拖动后缩放(空格切换大小时)：保持预览框中心位置不变
+                left = balancePosition(previewState.dragCenterX, 0, pw, window.innerWidth);
+                top = balancePosition(previewState.dragCenterY, 0, ph, window.innerHeight);
             } else {
                 // 拖动后刷新(大图替换缩略图时)：保持预览框中心位置不变
                 left = rect.left - (pw - ow) / 2;
@@ -3490,11 +3824,11 @@
     }
 
     /** 渲染预览框位置和内容，支持缩放与大图加载 */
-    function renderPreview(loadLarge = true, wheelEvent = null) {
+    function renderPreview(loadLarge = true, wheelEvent = null, constraints = null) {
         if (!previewState.active) return;
 
         const { el } = previewState;
-        const { pw } = updatePreviewGeometry(wheelEvent);
+        const { pw } = updatePreviewGeometry(wheelEvent, constraints);
 
         previewDOM.container.style.display = 'block';
         enablePanelTop(previewDOM.container);
@@ -3510,7 +3844,7 @@
             applyThumbnailStyle(pw);
 
             // 再异步加载大图
-            if (cfg.hoverLoadLargeImage && loadLarge) {
+            if (cfg.previewLargeImage && loadLarge) {
                 handleLargeImageLoading();
             }
         }
@@ -3622,7 +3956,7 @@
                 el._isFetching = false;
 
                 // 预览框还在显示时更新大图
-                if (previewState.active && previewState.el === el) {
+                if (previewState.el === el) {
                     previewDOM.shimmer.style.display = 'none';
                     updatePreviewGeometry();
 
@@ -3673,17 +4007,42 @@
     }
 
     /** 初始化悬浮预览并计算缩放参数 */
-    function startHover(imgEl, data) {
-        // 初始化 DOM（只创建一次）
-        if (!previewDOM.container) initPreviewDOM();
+    function startHover(imgEl, data, immediate = false, preserveSizeMode = false) {
+        clearTimeout(pointerState.hoverTimer);
+        pointerState.hoverTimer = null;
+        pointerState.hoverTimerOwner = null;
 
-        clearTimeout(hoverTimer); // 清除上一次定时器
+        // 没有传入目标时，从鼠标位置获取
+        if (!imgEl || !data) {
+            const hoveredThumb = document.querySelector('[data-lolicon-bound-hover]:hover');
+            if (hoveredThumb) {
+                const isList = pageInfo.listDisplayMode === 't';
+                const parentEl = isList ? hoveredThumb.closest('.gl1t') : hoveredThumb;
+                const dataObj = parentEl?._loliconData;
+                if (dataObj) {
+                    imgEl = isList ? dataObj.img : dataObj.el;
+                    data = dataObj;
+                }
+            }
+            if (!imgEl || !data) return;
+        }
+
         previewDOM.link.href = data.url; // 设置预览链接
-        previewState.active = true;
-        previewState.el = imgEl;
-        previewState.isDragging = false;
 
-        hoverTimer = setTimeout(() => {
+        previewState.active = true;
+
+        const delay = immediate ? 0 : cfg.previewDelay * 1000;
+
+        const run = () => {
+            pointerState.hoverTimer = null;
+            pointerState.hoverTimerOwner = null;
+            if (!previewState.active) return;
+
+            // 切换缩略图时清除旧大图内容，避免残留
+            previewDOM.largeLayer?.replaceChildren();
+            previewDOM.shimmer.style.display = 'none';
+            priorityFetch = null;
+
             // 计算基础参数
             const {
                 originalGl3tWidth,
@@ -3721,22 +4080,67 @@
             }
 
             // 更新全局预览状态
+            previewState.el = imgEl;
             previewState.data = { ...data, zoomFactorO }; // 注入计算出的 zoomFactorO
-            previewState.scale = cfg.hoverScale;
             previewState.bw = widthO * zoomFactorO;
             previewState.bh = heightO * zoomFactorO;
+            previewState.isDragging = false;
+            previewState.dragCenterX = 0;
+            previewState.dragCenterY = 0;
+
+            // sizeMode 继承或重新推导
+            const incomingSizeMode = preserveSizeMode && previewState.sizeMode ? previewState.sizeMode : null;
+            previewState.sizeMode = incomingSizeMode || getInitialSizeMode();
+
+            const isFirstOpenCustom = !incomingSizeMode && previewState.sizeMode === 'custom';
+            const constraints = getPreviewConstraints();
+            previewState.scale = computeScaleForMode(
+                previewState.sizeMode,
+                constraints,
+                preserveSizeMode && !!incomingSizeMode,
+                isFirstOpenCustom
+            );
+
+            // 首次打开且为 custom：以 cfg.previewScale 初始化基准值，供后续导航/Space 继承
+            if (isFirstOpenCustom) previewState.lastManualScale = cfg.previewScale;
 
             if (!(previewState.el._largeImg instanceof Image)) { priorityFetch = url; }
-            renderPreview();
-        }, cfg.hoverDelay * 1000); // 延迟渲染预览
+            renderPreview(true, null, constraints);
+            document.activeElement?.blur(); // 取消焦点，避免输入框拦截空格等快捷键
+        };
+
+        if (delay === 0) {
+            run();
+        } else {
+            // 延迟路径（悬浮触发）：在等待期间启用发光动画提供视觉反馈
+            (pageInfo.listDisplayMode === 't' ? $c('ido')[0] : $i('gdt')).classList.add('lolicon-hover-glow');
+            pointerState.hoverTimer = setTimeout(run, delay);
+            pointerState.hoverTimerOwner = imgEl;
+        }
     }
 
     /** 隐藏放大预览并重置状态 */
     function hidePreview() {
-        clearTimeout(hoverTimer); // 清除悬浮延迟
+        if (pointerState.hoverTimer) {
+            clearTimeout(pointerState.hoverTimer);
+            pointerState.hoverTimer = null;
+            pointerState.hoverTimerOwner = null;
+        }
 
         if (!previewState.active) return;
-        previewState.active = false; // 标记预览已关闭
+
+        // 清除 lolicon-thumb-focus
+        if (pointerState.focusedThumb) {
+            pointerState.focusedThumb.classList.remove('lolicon-thumb-focus');
+            pointerState.focusedThumb = null;
+        }
+
+        previewState.active = false;
+        shortcutState.byKey = false;
+        previewState.isDragging = false;
+        previewState.sizeMode = null;
+
+        invalidateHover();
 
         if (previewDOM.container) {
             previewDOM.container.style.display = 'none';
@@ -3754,19 +4158,19 @@
 
     /** 处理预览框滚轮缩放 */
     function handleWheel(e) {
-        if (previewDOM.container.style.display !== 'block') return; // 未显示时忽略
+        if (!previewState.el) return; // 预览框未渲染时忽略
         e.preventDefault(); // 阻止页面滚动
 
         const SCALE_STEP = 1.2;
-        previewState.scale *= e.deltaY < 0 ? SCALE_STEP : 1 / SCALE_STEP;
+        let newScale = previewState.scale * (e.deltaY < 0 ? SCALE_STEP : 1 / SCALE_STEP);
 
         // 限制最大缩放
         const { bw, bh } = previewState;
-        const maxScaleWidth = (window.innerWidth * 6) / bw;
-        const maxScaleHeight = (window.innerHeight * 6) / bh;
-        const maxScale = Math.max(maxScaleWidth, maxScaleHeight);
+        newScale = Math.max(1, Math.min(getMaxScale(bw, bh), newScale));
 
-        previewState.scale = Math.max(1, Math.min(maxScale, previewState.scale));
+        previewState.scale = newScale;
+        previewState.lastManualScale = newScale;
+        previewState.sizeMode = 'custom';
 
         renderPreview(false, e); // 更新预览，传入 event 用于以鼠标为中心缩放
     }
@@ -3812,6 +4216,10 @@
             previewDOM.container.removeEventListener('pointermove', onPointerMove);
             previewDOM.container.removeEventListener('pointerup', onPointerUp);
             previewDOM.container.removeEventListener('pointercancel', onPointerUp);
+
+            const rect = previewDOM.container.getBoundingClientRect();
+            previewState.dragCenterX = rect.left + rect.width / 2;
+            previewState.dragCenterY = rect.top + rect.height / 2;
         }
 
         previewDOM.container.addEventListener('pointermove', onPointerMove); // 绑定拖拽
@@ -3819,7 +4227,7 @@
         previewDOM.container.addEventListener('pointercancel', onPointerUp);
     }
 
-    /** 绑定缩略图悬浮放大功能到单个缩略图 */
+    /** 绑定缩略图预览功能到单个缩略图 */
     function bindThumbHoverZoom(data) {
         const { el, gl3t, img } = data;
 
@@ -3837,19 +4245,55 @@
         if (thumbEl.getAttribute('data-lolicon-bound-hover')) return;
         thumbEl.setAttribute('data-lolicon-bound-hover', 'true');
 
-        thumbEl.classList.add('lolicon-hover-hint');
+        thumbEl.classList.add('lolicon-hover-thumb');
 
         // 悬浮显示大图
-        thumbEl.addEventListener('pointerenter', () => {
-            if (!cfg.thumbHoverZoom) return;
-            startHover(imgEl, data);
+        thumbEl.addEventListener('pointerenter', (e) => {
+            if (cfg.thumbPreview === 0) return;
+
+            // 初始化 DOM 并注册全局键盘/失焦监听器（首次悬停时执行一次）
+            if (!previewDOM.container) initPreviewDOM();
+
+            // lolicon-thumb-focus 即时响应（绕过 Firefox CSS :hover 延迟）
+            if (pointerState.focusedThumb && pointerState.focusedThumb !== thumbEl) {
+                pointerState.focusedThumb.classList.remove('lolicon-thumb-focus');
+            }
+            pointerState.focusedThumb = thumbEl;
+            thumbEl.classList.add('lolicon-thumb-focus');
+
+            if (isSyntheticPointerEvent(e)) return;
+
+            // 捕获指针事件瞬间的按键状态，防止与全局 keydown 出现时序不同步
+            shortcutState.ctrl = e.ctrlKey;
+            shortcutState.shift = e.shiftKey;
+
+            // 显示预览
+            if (cfg.thumbPreview >= 2 && isModifierActive()) {
+                // 修饰键路径 → 即时触发
+                shortcutState.handled = true;
+                shortcutState.byKey = true;
+                startHover(imgEl, data, true);
+            } else if (cfg.thumbPreview === 1 || cfg.thumbPreview === 3) {
+                // 非修饰键路径 → 带延迟触发
+                shortcutState.byKey = false;
+                startHover(imgEl, data, false);
+            }
         });
 
-        // 鼠标离开缩略图
         thumbEl.addEventListener('pointerleave', (e) => {
-            clearTimeout(hoverTimer);
-            // 如果去向不是预览框，且当前处于激活状态，则隐藏
-            if (!previewDOM.container?.contains(e.relatedTarget) && previewState.active) {
+            if (isSyntheticPointerEvent(e)) return;
+
+            // 预览源缩略图被遮时保留聚焦
+            if (previewState.el !== imgEl) {
+                thumbEl.classList.remove('lolicon-thumb-focus');
+                if (pointerState.focusedThumb === thumbEl) pointerState.focusedThumb = null;
+            }
+            if (pointerState.hoverTimer && pointerState.hoverTimerOwner === imgEl) {
+                clearTimeout(pointerState.hoverTimer);
+                pointerState.hoverTimer = null;
+                pointerState.hoverTimerOwner = null;
+            }
+            if (previewState.el === imgEl && cfg.previewCloseOnLeave && !previewDOM.container?.contains(e.relatedTarget) && previewState.active) {
                 hidePreview();
             }
         });
@@ -3857,16 +4301,25 @@
         // 移动取消 (仅针对触控，防止滑动网页时误弹)
         thumbEl.addEventListener('pointermove', (e) => {
             if (e.pointerType === 'touch' && !previewState.active) {
-                clearTimeout(hoverTimer);
+                if (pointerState.hoverTimer && pointerState.hoverTimerOwner === imgEl) {
+                    clearTimeout(pointerState.hoverTimer);
+                    pointerState.hoverTimer = null;
+                    pointerState.hoverTimerOwner = null;
+                }
             }
         });
     }
 
     /** 更新悬停缩放效果状态 */
     function updateHoverZoom() {
-        const el = pageInfo.listDisplayMode === 't' ? $c('ido')[0] : $i('gdt');
-        el.classList.toggle('lolicon-hover-enabled', cfg.thumbHoverZoom);
-        if (cfg.thumbHoverZoom) el.style.setProperty('--lolicon-hover-duration', cfg.hoverDelay - 0.1 + 's');
+        const isList = pageInfo.listDisplayMode === 't';
+        const el = isList ? $c('ido')[0] : $i('gdt');
+
+        el.classList.toggle('lolicon-hover-outline', cfg.thumbPreview >= 1);
+        el.classList.toggle('lolicon-hover-glow', cfg.thumbPreview === 1 || cfg.thumbPreview === 3);
+        if (cfg.thumbPreview === 1 || cfg.thumbPreview === 3) {
+            el.style.setProperty('--lolicon-hover-duration', Math.max(0, cfg.previewDelay - 0.1) + 's');
+        }
     }
 
     /* ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
@@ -5076,7 +5529,7 @@
         panel.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') confirm();
             if (e.key === 'Escape') panel.remove();
-            e.stopPropagation();
+            blockNonControlKey(e);
         });
 
         // 定位在锚元素下方
@@ -5169,7 +5622,7 @@
                 finalizeSave(tagsSnapshot, false);
                 panel.remove();
             }
-            e.stopPropagation();
+            blockNonControlKey(e);
         }, true);
 
         document.body.append(panel);
@@ -7039,6 +7492,9 @@
                     throttledUpdateURLOnScroll();
                 }
             });
+            document.addEventListener('pointermove', (e) => {
+                onThumbPreviewPointerMove(e);
+            }, { passive: true });
         } else if (pageInfo.isGalleryPage) {
             setupScrollObserver();
             bindTagInputEvents();
@@ -7046,6 +7502,9 @@
                 throttledAdjustColumnsG();
                 throttledReposition();
             });
+            document.addEventListener('pointermove', (e) => {
+                onThumbPreviewPointerMove(e);
+            }, { passive: true });
         } else if (pageInfo.hasSearchBox) {
             bindTagInputEvents();
             window.addEventListener('resize', throttledAdjustColumnsL);
