@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.07.12
+// @version             2026.07.12.02
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Preview
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图预览
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮圖預覽
@@ -3706,7 +3706,7 @@
     }
 
     /** 方向键切换预览到相邻缩略图；mode: 'linear' 上一张/下一张，'row' 上一行/下一行 */
-    function navigatePreview(delta, mode = 'linear') {
+    function navigatePreview(delta, mode = 'linear', isRepeat = false) {
         if (!previewState.el) return;
 
         // 按住空格期间导航：松开时不再切换尺寸
@@ -3734,12 +3734,13 @@
 
         invalidateHover();
         const scrollTargetEl = isList ? parentEl : nextThumbEl.closest('a');
-
-        // 滚动前预测最终位置
         const useGl3t = data.gl3t && !(imgEl.complete && imgEl.naturalWidth > 0);
-        previewState.predictedRect = predictRectAfterScroll(scrollTargetEl, useGl3t ? nextThumbEl : imgEl);
 
-        scrollTargetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        // 仅 smooth 滚动需要预测目标位置
+        previewState.predictedRect = isRepeat ? null : predictRectAfterScroll(scrollTargetEl, useGl3t ? nextThumbEl : imgEl);
+
+        // 长按方向键时禁用 smooth 滚动，避免 Chromium 浏览器连续调用时动画不断重启造成抖动
+        scrollTargetEl.scrollIntoView({ behavior: isRepeat ? 'instant' : 'smooth', block: 'nearest', inline: 'nearest' });
         startHover(imgEl, data, true, true);
     }
 
@@ -3782,8 +3783,8 @@
         });
 
         /** 方向键导航-节流 */
-        const throttledNavigatePreview = throttle((delta, mode) => {
-            navigatePreview(delta, mode);
+        const throttledNavigatePreview = throttle((delta, mode, isRepeat) => {
+            navigatePreview(delta, mode, isRepeat);
         }, 60, { leading: true, trailing: false });
 
         /** 键盘缩放-节流，与滚轮共用 applyZoomStep，步进逻辑保持一致 */
@@ -3813,12 +3814,12 @@
             }
             if (previewState.el && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault();
-                throttledNavigatePreview(e.key === 'ArrowRight' ? 1 : -1, 'linear');
+                throttledNavigatePreview(e.key === 'ArrowRight' ? 1 : -1, 'linear', e.repeat);
                 return;
             }
             if (previewState.el && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
                 e.preventDefault();
-                throttledNavigatePreview(e.key === 'ArrowDown' ? 1 : -1, 'row');
+                throttledNavigatePreview(e.key === 'ArrowDown' ? 1 : -1, 'row', e.repeat);
                 return;
             }
             if (previewState.el && (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_')) {
