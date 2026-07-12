@@ -33,7 +33,7 @@ Userscript:
 - **Fixed Scale** - Display preview at the configured **Zoom Scale**, with optional **Scale Limit** to restrict the maximum size
 - **Fit to Screen** - Automatically calculate optimal preview size based on window size; **Fit Mode** offers **Contain** or **Cover**
 - **Auto Load Large Image** - When enabled, automatically loads the high-resolution image when preview opens, replacing the blurry thumbnail (Note: consumes viewing quota)
-- **Keyboard Shortcuts** - While preview is open, press Space to load the large image or cycle through preview sizes, use ← → arrow keys to switch to adjacent thumbnails
+- **Keyboard Shortcuts** - While preview is open, press Space to load the large image or cycle through preview sizes, use ← → ↑ ↓ arrow keys to navigate between thumbnails, hold Space while navigating to automatically load the large image
 
 ### Search & Tags
 
@@ -60,7 +60,7 @@ Userscript:
   - Both features above support a configurable auto-load page limit (Default: 0 = Unlimited)
   - Supports continuous loading by automatically following newly loaded content, with configurable auto-load delay
   - After reaching the limit, you can still load more manually, and previous pages can also be loaded manually
-- **Quick Favorite** - Add to favorites without popups. Supports multiple layouts, choose between click and hover to open
+- **Quick Favorite** - Add to favorites without popups, supports multiple layouts, menu sizes, and click or hover activation
 - **Scrollable Thumbnails** - Transform the gallery page thumbnail area into an independent scrolling container to maintain page layout stability when viewing numerous thumbnails
 
 ### Other Features
