@@ -518,7 +518,7 @@
                 --lolicon-ac-bg-rgb: 248, 244, 236; --lolicon-ac-hover-rgb: 232, 236, 243;
                 --lolicon-ac-sub-rgb: 95, 99, 104; --lolicon-ac-mark-rgb: 245, 245, 0;
             }
-            body.dark {
+            body.lolicon-dark {
                 --lolicon-primary-rgb: 255, 255, 255; --lolicon-bg-rgb: 0, 0, 0; --lolicon-text-rgb: 234, 234, 234;
                 --lolicon-eh-page-bg-rgb: 52, 53, 59; --lolicon-eh-container-bg-rgb: 79, 83, 91;
                 --lolicon-eh-item-bg1-rgb: 54, 57, 64; --lolicon-eh-item-bg2-rgb: 60, 65, 75;
@@ -7677,7 +7677,7 @@
             }
         }
 
-        document.body.classList.toggle('dark', isDark);
+        document.body.classList.toggle('lolicon-dark', isDark);
     }
 
     /** 向页面注入脚本所需的 CSS 样式 */
