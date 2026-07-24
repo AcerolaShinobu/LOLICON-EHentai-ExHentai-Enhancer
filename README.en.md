@@ -19,6 +19,7 @@ Userscript:
 - **Zoom First** - Keeps the configured zoom scale while columns adjust automatically. Supports **Auto**, **Max/Min Column**, and **Max/Min Width**
 - **Column First** - Keeps a fixed column count while thumbnails scale with window width. Supports Min/Max **Zoom limits**
 - **Square Thumbnail** - Crop thumbnails into a uniform square aspect ratio
+- **Checkerboard Background Fix** - Automatically adjusts the checkerboard background when using custom thumbnail column counts to prevent misalignment
 - **Thumbnail Margin/Spacing** - Adjust spacing between thumbnails and around them
 - **Page Margin/Padding** - Adjust spacing between the page container, window, and content
 - **Full Width Layout** - Expand the page to the maximum available width
@@ -78,6 +79,8 @@ Userscript:
   - Excessive requests may trigger site limits
 - **Log Level** - Control console log verbosity for debugging and troubleshooting
 - **Language** - Script UI language (Auto / English / 简体中文 / 繁体中文 / 日本語 / 한국어 / Русский)
+- **Script Theme** - Controls the script interface color mode. Supports **Auto** (adapts to the page background) / **Dark** / **Light**
+- **Site Limit Warning** - Automatically pauses related requests and displays a warning when the image viewing limit (509) or other site access restrictions are detected. No configuration required.
 - **Settings Management** - Export Settings Backup, Restore Settings Backup, Reset Settings, Disable All Toggles
 
 ---
