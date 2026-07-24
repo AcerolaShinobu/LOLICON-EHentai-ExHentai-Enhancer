@@ -512,20 +512,22 @@
         vars: /* css */ `
             body {
                 --lolicon-primary-rgb: 0, 0, 0; --lolicon-bg-rgb: 255, 255, 255; --lolicon-text-rgb: 22, 22, 22;
-                --lolicon-eh-bg1-rgb: 242, 240, 228; --lolicon-eh-bg2-rgb: 237, 235, 223; --lolicon-eh-bg3-rgb: 227, 224, 209;
+                --lolicon-eh-page-bg-rgb: 227, 224, 209; --lolicon-eh-container-bg-rgb: 237, 235, 223;
+                --lolicon-eh-item-bg1-rgb: 242, 240, 228; --lolicon-eh-item-bg2-rgb: 237, 235, 223;
                 --lolicon-eh-text-rgb: 92, 13, 17; --lolicon-eh-border-rgb: 92, 13, 17;
                 --lolicon-ac-bg-rgb: 248, 244, 236; --lolicon-ac-hover-rgb: 232, 236, 243;
                 --lolicon-ac-sub-rgb: 95, 99, 104; --lolicon-ac-mark-rgb: 245, 245, 0;
             }
             body.dark {
                 --lolicon-primary-rgb: 255, 255, 255; --lolicon-bg-rgb: 0, 0, 0; --lolicon-text-rgb: 234, 234, 234;
-                --lolicon-eh-bg1-rgb: 52, 53, 59; --lolicon-eh-bg2-rgb: 60, 65, 75; --lolicon-eh-bg3-rgb: 79, 83, 91;
+                --lolicon-eh-page-bg-rgb: 52, 53, 59; --lolicon-eh-container-bg-rgb: 79, 83, 91;
+                --lolicon-eh-item-bg1-rgb: 54, 57, 64; --lolicon-eh-item-bg2-rgb: 60, 65, 75;
                 --lolicon-eh-text-rgb: 221, 221, 221; --lolicon-eh-border-rgb: 0, 0, 0;
                 --lolicon-ac-bg-rgb: 43, 43, 43; --lolicon-ac-hover-rgb: 62, 63, 64;
                 --lolicon-ac-sub-rgb: 217, 217, 217; --lolicon-ac-mark-rgb: 114, 114, 0;
             }
-            .gl1t:nth-child(2n+1) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg1-rgb); }
-            .gl1t:nth-child(2n+2) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg2-rgb); }
+            .gl1t:nth-child(2n+1) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg1-rgb); }
+            .gl1t:nth-child(2n+2) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg2-rgb); }
         `,
 
         // 覆盖站点元素
@@ -3672,8 +3674,8 @@
         // 如果是单数列
         if (layout.columnsT % 2 !== 0) {
             styleEl.textContent = `
-                .lolicon-layout-enabled .gl1t:nth-child(2n+1) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg1-rgb); }
-                .lolicon-layout-enabled .gl1t:nth-child(2n+2) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg2-rgb); }
+                .lolicon-layout-enabled .gl1t:nth-child(2n+1) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg1-rgb); }
+                .lolicon-layout-enabled .gl1t:nth-child(2n+2) { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg2-rgb); }
             `;
             return;
         }
@@ -3697,8 +3699,8 @@
 
         // 写入纯变量分配规则
         styleEl.textContent = `
-            ${color1Selectors.join(',\n')} { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg1-rgb); }
-            ${color2Selectors.join(',\n')} { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-bg2-rgb); }
+            ${color1Selectors.join(',\n')} { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg1-rgb); }
+            ${color2Selectors.join(',\n')} { --lolicon-gl1t-bg-rgb: var(--lolicon-eh-item-bg2-rgb); }
         `;
     }
 
