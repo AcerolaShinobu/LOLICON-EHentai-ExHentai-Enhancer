@@ -85,6 +85,10 @@
 
 ---
 
+- 移动设备上推荐搭配 [EhPeek](https://github.com/yamipot/ehpeek) 一起使用
+
+---
+
 - 自动适配窗口尺寸功能受到 AmadeusAI 的 "Wide Hentai 2019" 和 Owyn 的 "Wide ExHentai" 启发
 - 快捷标签功能受到 greasy_su 的 "ExHentai Viewer" 启发
 - 标签自动补全功能移植自 [EhSyringe](https://github.com/EhTagTranslation/EhSyringe)

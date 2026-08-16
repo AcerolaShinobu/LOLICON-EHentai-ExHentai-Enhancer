@@ -85,6 +85,10 @@ Userscript:
 
 ---
 
+- On mobile devices, pairing with [EhPeek](https://github.com/yamipot/ehpeek) is recommended
+
+---
+
 - The Auto Window Adaptation feature was inspired by AmadeusAI's "Wide Hentai 2019" and Owyn's "Wide ExHentai"
 - The Quick Tag feature was inspired by greasy_su's "ExHentai Viewer"
 - Tag Auto-Complete feature ported from [EhSyringe](https://github.com/EhTagTranslation/EhSyringe)
