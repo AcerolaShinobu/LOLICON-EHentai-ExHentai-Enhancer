@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.08.12
+// @version             2026.08.16
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Preview
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图预览
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮圖預覽
@@ -1898,8 +1898,8 @@
 
     /** 监听元素变化触发回调：options 为 MutationObserver 配置，未显式指定时默认监听 style/class 属性 */
     function observeElement(el, callback, options = { attributes: true, attributeFilter: ['style', 'class'] }) {
-        if (!el) return;
-        new MutationObserver((mutations) => {
+        if (!el) return null;
+        const observer = new MutationObserver((mutations) => {
             if (cfg.logLevel <= 0) {
                 mutations.forEach(m => {
                     if (m.type === 'childList') {
@@ -1911,7 +1911,20 @@
                 });
             }
             callback(mutations);
-        }).observe(el, options);
+        });
+        observer.observe(el, options);
+        return observer;
+    }
+
+    /** SPA 自触发抑制：observer 回调据此跳过 LOLICON 自身的插入；用微任务复位以保证覆盖同批 observer 通知 */
+    let spaObserverSuppressed = false;
+    function withSpaObserverSuppressed(fn) {
+        spaObserverSuppressed = true;
+        try {
+            fn();
+        } finally {
+            queueMicrotask(() => { spaObserverSuppressed = false; });
+        }
     }
 
     /** 阻止非控制键传播（放行修饰键及 Escape） */
@@ -2624,7 +2637,7 @@
     let inputDevice = null;
 
     /** 收集列表页信息 */
-    function collectDataL(root = document, direction = 'next') {
+    function collectDataL(root = document, direction = 'next', mode = 'append') {
         if (cfg.logLevel <= 0) console.log('LOLICON 收集列表页信息');
         const isThumbnailMode = pageInfo.listDisplayMode === 't';
         const gElements = isThumbnailMode
@@ -2636,7 +2649,10 @@
         const newData = [];
 
         gElements.forEach((el) => {
-            if (el._loliconData) return;
+            if (el._loliconData) {
+                if (mode === 'align') newData.push(el._loliconData);
+                return;
+            }
 
             if (!isThumbnailMode && el.querySelector('td.itd')) return; // 跳过广告行
 
@@ -2686,7 +2702,10 @@
             observeForLiveURL(el); // 注册"实时更新网址"可见性监测，覆盖全部列表显示模式
         });
 
-        if (direction === 'next') {
+        if (mode === 'align') {
+            pageItemsData = newData; // 整体替换：不在本次查询结果里的旧数据（已不在文档树上）自然被丢弃
+            pageItemsData.forEach((item, idx) => { item.pageIndex = idx; });
+        } else if (direction === 'next') {
             newData.forEach((item) => {
                 item.pageIndex = pageItemsData.length;
                 pageItemsData.push(item);
@@ -2702,7 +2721,7 @@
     }
 
     /** 收集画廊页面信息 */
-    function collectDataG(root = document, direction = 'next') {
+    function collectDataG(root = document, direction = 'next', mode = 'append') {
         if (cfg.logLevel <= 0) console.log('LOLICON 收集画廊页面信息');
         const gdt = (root === document) ? $i('gdt') : root;
         const gdtThumbsSingle = gdt.querySelectorAll('a > div:nth-child(1)');
@@ -2714,7 +2733,10 @@
         const newData = [];
 
         gdtThumbs.forEach((el, index) => {
-            if (el._loliconData) return;
+            if (el._loliconData) {
+                if (mode === 'align') newData.push(el._loliconData);
+                return;
+            }
 
             const style = el.style;
             const backgroundPositionX = parseFloat(style.backgroundPosition);
@@ -2755,7 +2777,10 @@
             }
         });
 
-        if (direction === 'next') {
+        if (mode === 'align') {
+            pageItemsData = newData; // 整体替换：不在本次查询结果里的旧数据（已不在文档树上）自然被丢弃
+            pageItemsData.forEach((item, idx) => { item.pageIndex = idx; });
+        } else if (direction === 'next') {
             newData.forEach((item) => {
                 item.pageIndex = pageItemsData.length;
                 pageItemsData.push(item);
@@ -3488,7 +3513,7 @@
             setTimeout(() => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-            }, 100);
+            }, 120);
         } catch (error) {
             if (cfg.logLevel <= 2) console.error('LOLICON 备份失败:', error);
             alert(error.message);
@@ -7286,20 +7311,63 @@
         }
     }
 
+    /** 构造画廊预览指定页码的链接 */
+    function previewUrlForIndex(index, baseUrl) {
+        const url = new URL(baseUrl);
+        if (index <= 0) url.searchParams.delete('p'); else url.searchParams.set('p', String(index));
+        url.hash = '';
+        return url.href;
+    }
+
+    /** 推算画廊页边界：调用方须传入 document，不能传 fetchedDoc（插入内容后会被搬空，appendChild 是移动不是复制） */
+    function getGalleryPageBoundary(doc) {
+        const pageSize = Number(doc.querySelector('#gdo .ths')?.textContent?.trim());
+        if (!Number.isInteger(pageSize) || pageSize <= 0) return null;
+
+        const gdt = doc.querySelector('#gdt');
+        let minImage = Infinity, maxImage = -Infinity;
+        gdt?.querySelectorAll('a[href]').forEach((a) => {
+            const m = a.href.match(/\/s\/[^/]+\/\d+-(\d+)\/?(?:[?#]|$)/);
+            if (!m) return;
+            const n = Number(m[1]);
+            if (n < minImage) minImage = n;
+            if (n > maxImage) maxImage = n;
+        });
+        if (!Number.isFinite(minImage) || !Number.isFinite(maxImage)) return null;
+
+        const rangeText = doc.querySelector('.gpc')?.textContent ?? '';
+        const totalImages = Number(rangeText.match(/([\d,]+)\s*-\s*([\d,]+)\D+([\d,]+)/)?.[3]?.replace(/,/g, ''));
+        if (!Number.isSafeInteger(totalImages) || totalImages <= 0 || totalImages < maxImage) return null;
+
+        const startPageIndex = Math.floor((minImage - 1) / pageSize); // 已加载范围起点所在的页
+        const endPageIndex = Math.floor((maxImage - 1) / pageSize); // 已加载范围末尾所在的页
+        const maxIndex = Math.floor((totalImages - 1) / pageSize); // 全画廊最后一页
+
+        return {
+            prevIndex: startPageIndex > 0 ? startPageIndex - 1 : null,
+            nextIndex: endPageIndex < maxIndex ? endPageIndex + 1 : null,
+        };
+    }
+
     /** 提取并更新页面链接 */
     function updatePageLink(doc, direction = 'both') {
+        // 画廊页边界统一用 document 而非 doc：fetchedDoc 插入内容后 #gdt 会被搬空（appendChild 是移动不是复制）
+        const boundary = pageInfo.isGalleryPage ? getGalleryPageBoundary(document) : null;
+        if (!boundary && pageInfo.isGalleryPage && cfg.logLevel <= 1) console.warn('LOLICON 画廊页边界解析失败，保留原有分页链接不做更新');
+
         if (direction === 'both' || direction === 'next') {
             if (pageInfo.listDisplayMode) {
                 nextPage.pageLink = doc.querySelector('#dnext')?.href;
                 if (nextPage.pageLink) {
-                    $i('unext').href = nextPage.pageLink;
-                    $i('dnext').href = nextPage.pageLink;
+                    $i('unext')?.setAttribute('href', nextPage.pageLink);
+                    $i('dnext')?.setAttribute('href', nextPage.pageLink);
                 }
-            } else if (pageInfo.isGalleryPage) {
-                nextPage.pageLink = doc.querySelector('.ptb tr:first-child td:last-child a')?.href;
+            } else if (pageInfo.isGalleryPage && boundary) {
+                // nextIndex 为 null（已到最后一页）时须显式置 undefined，清除残留的旧链接，否则会反复尝试加载
+                nextPage.pageLink = (boundary.nextIndex !== null) ? previewUrlForIndex(boundary.nextIndex, window.location.href) : undefined;
                 if (nextPage.pageLink) {
-                    $('.ptt tr:first-child td:last-child a').href = nextPage.pageLink;
-                    $('.ptb tr:first-child td:last-child a').href = nextPage.pageLink;
+                    $('.ptt tr:first-child td:last-child a')?.setAttribute('href', nextPage.pageLink);
+                    $('.ptb tr:first-child td:last-child a')?.setAttribute('href', nextPage.pageLink);
                 }
             }
         }
@@ -7308,14 +7376,14 @@
             if (pageInfo.listDisplayMode) {
                 prevPage.pageLink = doc.querySelector('#dprev')?.href;
                 if (prevPage.pageLink) {
-                    $i('uprev').href = prevPage.pageLink;
-                    $i('dprev').href = prevPage.pageLink;
+                    $i('uprev')?.setAttribute('href', prevPage.pageLink);
+                    $i('dprev')?.setAttribute('href', prevPage.pageLink);
                 }
-            } else if (pageInfo.isGalleryPage) {
-                prevPage.pageLink = doc.querySelector('.ptb tr:first-child td:first-child a')?.href;
+            } else if (pageInfo.isGalleryPage && boundary) {
+                prevPage.pageLink = (boundary.prevIndex !== null) ? previewUrlForIndex(boundary.prevIndex, window.location.href) : undefined;
                 if (prevPage.pageLink) {
-                    $('.ptt tr:first-child td:first-child a').href = prevPage.pageLink;
-                    $('.ptb tr:first-child td:first-child a').href = prevPage.pageLink;
+                    $('.ptt tr:first-child td:first-child a')?.setAttribute('href', prevPage.pageLink);
+                    $('.ptb tr:first-child td:first-child a')?.setAttribute('href', prevPage.pageLink);
                 }
             }
         }
@@ -7337,6 +7405,7 @@
         if (state.isLoading) return state.loadPromise; // 已在加载中，复用同一个 Promise 供等待
         if (!state.pageLink) return;
 
+        const genAtStart = spaObservers.generation; // 记录发起加载时的世代
         state.isLoading = true;
         state.loadPromise = (async () => {
             let hasNewContent = false; // 本轮是否插入了新内容，用于 finally 块判断
@@ -7347,6 +7416,13 @@
                 const html = await response.text();
                 const parser = new DOMParser();
                 const fetchedDoc = parser.parseFromString(html, 'text/html');
+
+                if (genAtStart !== spaObservers.generation) {
+                    // fetch 在途发生 SPA 切页：fetchedDoc 已属旧页，插入会混页，丢弃（新页状态已由防抖重跑处理）
+                    if (cfg.logLevel <= 1) console.warn(`LOLICON ${isNext ? '下' : '上'}一页加载完成时页面已发生 SPA 切页，丢弃本次结果`);
+                    return;
+                }
+
                 let contentNodes;
                 if (pageInfo.listDisplayMode === 't') {
                     contentNodes = fetchedDoc.querySelectorAll('.gl1t');
@@ -7382,11 +7458,14 @@
 
                     if (!isNext) snapshotPointerPosition(); // 插入前快照（await 后紧贴插入，防快照过期）
 
-                    if (container) {
-                        isNext ? container.appendChild(fragment) : container.insertBefore(fragment, container.firstElementChild);
-                    } else {
-                        isNext ? $i('lolicon-next-indicator').before(fragment) : $i('lolicon-prev-indicator').after(fragment);
-                    }
+                    // 自身插入须抑制 SPA observer，否则防抖重跑会用未更新的原生 #dprev/#dnext 覆盖刚算出的链接状态
+                    withSpaObserverSuppressed(() => {
+                        if (container) {
+                            isNext ? container.appendChild(fragment) : container.insertBefore(fragment, container.firstElementChild);
+                        } else {
+                            isNext ? $i('lolicon-next-indicator').before(fragment) : $i('lolicon-prev-indicator').after(fragment);
+                        }
+                    });
 
                     if (isNext) state.loadedCount++;
                     if (cfg.logLevel <= 0) console.log(`LOLICON ${isNext ? '下' : '上'}一页内容已成功加载。`);
@@ -7492,20 +7571,26 @@
             container = $el('div');
             container.id = indicatorId;
             container.className = 'lolicon-loading-container';
-            if (isNext) {
-                if (pageInfo.listDisplayMode) {
-                    parent.after(container);
+            withSpaObserverSuppressed(() => {
+                if (isNext) {
+                    if (pageInfo.listDisplayMode) {
+                        parent.after(container); // 插入为 .itg 的兄弟节点 → 触发列表页父容器 observer
+                    } else {
+                        parent.appendChild(container); // 插入为 #gdt 的子节点 → 触发画廊页自身 observer
+                    }
                 } else {
-                    parent.appendChild(container);
+                    if (pageInfo.listDisplayMode) {
+                        parent.before(container);
+                    } else if (pageInfo.isGalleryPage) {
+                        parent.insertBefore(container, parent.firstElementChild);
+                    }
                 }
-            } else {
-                if (pageInfo.listDisplayMode) {
-                    parent.before(container);
-                } else if (pageInfo.isGalleryPage) {
-                    parent.insertBefore(container, parent.firstElementChild);
-                }
-                status = getIdleStatus(direction);
-            }
+            });
+        }
+
+        // toggle 须按"内容为空"而非"刚创建"判断：prev 首次创建可能被 shouldShow=false 拦截、SPA 翻页后容器跨页存活但内容未初始化
+        if (!isNext && status === 'toggle' && !container.innerHTML) {
+            status = getIdleStatus(direction);
         }
 
         // 判断是否需要隐藏
@@ -7515,10 +7600,17 @@
             for (const el of $c('lolicon-loading-count')) {
                 el.textContent = pageItemsData.length;
             }
+            // 隐藏时清空残留内容，否则重新显示时 toggle 转换因内容非空不生效、旧文案会原样复活
+            container.replaceChildren();
             return;
         }
 
         container.style.display = '';
+
+        // 可见即刷新计数：SPA 切页后 align 重排 pageItemsData 可能无真实状态变化（仅 toggle），否则计数停留在切页前的旧值
+        for (const el of $c('lolicon-loading-count')) {
+            el.textContent = pageItemsData.length;
+        }
 
         // 配置状态内容
         const countHtml = `<span class="lolicon-loading-count">${pageItemsData.length}</span>`;
@@ -7534,10 +7626,6 @@
         if (status !== 'toggle') {
             container.innerHTML = statusHtmlMap[status];
 
-            for (const el of $c('lolicon-loading-count')) {
-                el.textContent = pageItemsData.length;
-            }
-
             const state = isNext ? nextPage : prevPage;
             state.isError = (status === 'error');
             container.onclick = (status === 'error' || status === 'autoLoad' || status === 'clickLoad') ? () => {
@@ -7546,14 +7634,71 @@
             } : null;
         }
 
-        // 画廊模式：确保 indicator 分别维持在 #gdt 内部的首/末位置（防御性）
+        // 确保画廊模式 indicator 维持在 #gdt 内的首/末位置（防御性）
         if (pageInfo.isGalleryPage) {
-            if (isNext && parent.lastElementChild !== container) {
-                parent.appendChild(container);
-            } else if (!isNext && parent.firstElementChild !== container) {
-                parent.insertBefore(container, parent.firstElementChild);
-            }
+            withSpaObserverSuppressed(() => {
+                if (isNext && parent.lastElementChild !== container) {
+                    parent.appendChild(container);
+                } else if (!isNext && parent.firstElementChild !== container) {
+                    parent.insertBefore(container, parent.firstElementChild);
+                }
+            });
         }
+    }
+
+    /** 当前挂载的 SPA 分页 observer 实例 */
+    const spaObservers = {
+        parent: null, // 观察内容容器父容器：容器被整体替换时触发
+        self: null, // 观察内容容器自身：子节点变化时触发
+        generation: 0, // 世代计数：SPA 切页信号时递增，loadPage() 据此丢弃在途切页后的旧页结果
+    };
+
+    /** 重新绑定"自身" observer（父容器触发后节点可能已被替换成新实例，须重查节点） */
+    function rebindSpaSelfObserver() {
+        if (cfg.logLevel <= 0) console.log('LOLICON 重绑 SPA 自身 observer');
+        spaObservers.self?.disconnect();
+        const node = pageInfo.listDisplayMode ? $c('itg')[0] : $i('gdt');
+        spaObservers.self = node ? observeElement(node, () => onSpaContentMutated('self'), { childList: true }) : null;
+    }
+
+    /** observer 回调统一入口：父容器触发（source='parent'）时先重新绑定自身 observer 再进防抖 */
+    function onSpaContentMutated(source) {
+        if (spaObserverSuppressed) return; // 命中 LOLICON 自身发起的变更，跳过
+        spaObservers.generation++; // 同步递增，立即失效在途 loadPage
+        if (source === 'parent') rebindSpaSelfObserver();
+        debouncedHandleSpaContentChanged();
+    }
+
+    /** 检测到内容变化后的重跑逻辑 */
+    const debouncedHandleSpaContentChanged = debounce(() => {
+        if (cfg.logLevel <= 0) console.log('LOLICON SPA 内容变化，执行防抖重跑');
+
+        // 清理可能残留的自动加载冷却状态（切页瞬间若冷却计时器仍在跑，会让新页面的自动加载误判为"还在冷却"）
+        if (scrollCtrl.cooldownTimer) {
+            clearTimeout(scrollCtrl.cooldownTimer);
+            scrollCtrl.cooldownTimer = null;
+            $i('lolicon-next-indicator')?.classList.remove('lolicon-load-cooldown'); // 列表页指示器节点持续存活，不清会一直挂着冷却动画
+        }
+
+        // 清理旧页面遗留状态
+        hidePreview();
+        hideNavHint();
+        nextPage.isError = false;
+        prevPage.isError = false;
+        nextPage.loadedCount = 1; // 视作进入新的一页，重新起算无限滚动加载页数
+
+        pageInfo.listDisplayMode ? collectDataL(document, 'next', 'align') : collectDataG(document, 'next', 'align');
+        updatePageLink(document);
+        applyChanges();
+        setupScrollObserver();
+    }, 60);
+
+    /** 初始化 SPA 分页兼容 observer，仅在 init() 中调用一次 */
+    function setupSpaPaginationObservers() {
+        const node = pageInfo.listDisplayMode ? $c('itg')[0] : pageInfo.isGalleryPage ? $i('gdt') : null;
+        if (!node) return;
+        spaObservers.parent = observeElement(node.parentElement, () => onSpaContentMutated('parent'), { childList: true });
+        rebindSpaSelfObserver();
     }
 
     /** 滚动监控 加载下一页 */
@@ -8421,6 +8566,7 @@
         }, { childList: true });
         observeElement(document.head, debouncedApplyChanges, { childList: true });
         observeElement(document.body, throttledApplyThemeColors);
+        setupSpaPaginationObservers();
         console.log('LOLICON 启动 结束');
     }
 
