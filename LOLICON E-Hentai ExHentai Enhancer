@@ -6,7 +6,7 @@
 // @name:ko             LOLICON E-Hentai / ExHentai 향상기
 // @name:ru             LOLICON E-Hentai / ExHentai Улучшатель
 // @namespace           https://greasyfork.org/scripts/516145
-// @version             2026.08.16
+// @version             2026.08.16.02
 // @description         Auto Window Adaptation, Adjustable Thumbnails (size/margin/columns), Quick Favorite, Infinite Scroll, Load More Thumbnails, Quick Tag & Search Enhancer, Tag Auto-Complete, Thumbnail Preview
 // @description:zh-CN   自动适配窗口尺寸、缩略图调整（大小/间距/列数）、快捷收藏、无限滚动、加载更多缩略图、快捷标签 & 搜索增强、标签自动补全、缩略图预览
 // @description:zh-TW   自動適配視窗尺寸、縮圖調整（大小/間距/列數）、快捷收藏、無限滾動、加載更多縮圖、快捷標籤 & 搜尋增強、標籤自動補全、縮圖預覽
@@ -7321,7 +7321,9 @@
 
     /** 推算画廊页边界：调用方须传入 document，不能传 fetchedDoc（插入内容后会被搬空，appendChild 是移动不是复制） */
     function getGalleryPageBoundary(doc) {
-        const pageSize = Number(doc.querySelector('#gdo .ths')?.textContent?.trim());
+        // #gdo（每页显示数量选择器）是账号设置，未登录时不渲染，此时站点固定每页 20 张
+        const pageSizeText = doc.querySelector('#gdo .ths')?.textContent?.trim();
+        const pageSize = pageSizeText ? Number(pageSizeText) : 20;
         if (!Number.isInteger(pageSize) || pageSize <= 0) return null;
 
         const gdt = doc.querySelector('#gdt');
